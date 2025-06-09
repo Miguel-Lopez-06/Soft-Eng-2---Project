@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SK Bulakan | <%= announcement.Title %></title>
+  <link rel="shortcut icon" href="../images/src/sk logo.png" type="png">
+  <link rel="stylesheet" href="../stylesheets/reset.css">
+  <link rel="stylesheet" href="../stylesheets/nav.css">
+  <link rel="stylesheet" href="../stylesheets/anncFocus.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <input id="anncID" type="hidden" value="<%= id %>">
+  <nav class="show">
+    <%- include('templates/navigation') %>
+  </nav>
+  <main>
+    <section>
+      <div class="cont">
+        <%
+          const { AnnouncementID, Title, Description, Image, DatePosted } = announcement;
+          const setDate = new Date(DatePosted);
+          const formattedDate = `${setDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ${setDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+        %>
+        <div class="head">
+          <h1 id="title"><%= Title %></h1>
+          <span id="datePosted"><%= formattedDate %></span>
+        </div>
+        <div class="body">
+          <img id="mainImg" src="<%= Image %>" alt="main image">
+          <p id="description"><%= Description %></p>
+        </div>
+        <div class="gallery">
+          <h1>Gallery</h1>
+          <ul class="galleryImgs">
+            <% galImages.forEach(img => { %>
+              <% const { ImagePath } = img; %>
+              <% if(ImagePath !== null){ %>
+                <li>
+                  <img src="<%= ImagePath %>" alt="gallery image" data-main-img>
+                </li>
+              <% } %>
+            <% }); %>
+          </ul>
+        </div>
+        <div class="bottom">
+          <%
+            let commentCount = 0;
+        
+            for (comment of comments) {
+              if (comment.AnnouncementID === AnnouncementID && comment.Status === 'approved') {
+                commentCount++;
+              }
+            }
+          %>
+          <!-- Approved Comments Section -->
+          <h2><%= commentCount %> Comment<%= commentCount !== 1 ? 's' : '' %></h2>
+          <hr>
+          <form id="commentForm">
+            <textarea name="comment" id="comment" required></textarea>
+            <div>
+              <button type="reset">Clear</button>
+              <button type="submit">Send</button>
+            </div>
+          </form>
+          <ul class="commentList">
+            <% comments.forEach(comment => { %>
+              <% if (comment.Status === 'approved') { %>
+                <li>
+                  <img src="../images/svg/circle-user.svg" alt="user" class="user-placeholder">
+                  <div class="txt">
+                    <span><%= new Date(comment.CommentDate).toLocaleString() %></span>
+                    <p><%= comment.Text %></p>
+                  </div>
+                </li>
+              <% } %>
+            <% }); %>
+          </ul>
+        
+          <!-- Flagged Comments Section -->
+          <br />
+          <button id="toggle-flagged-comments">Show Flagged Comments</button>
+          <div id="flagged-comments-container" style="display: none;">
+            <br />
+            <h3>Flagged Comments</h3>
+            <br />
+            <ul class="flaggedList">
+              <% comments.forEach(comment => { %>
+                <% if (comment.Status === 'flagged') { %>
+                  <li>
+                    <img src="../images/svg/circle-user.svg" alt="user" class="user-placeholder">
+                    <div class="txt">
+                      <span><%= new Date(comment.CommentDate).toLocaleString() %></span>
+                      <p><%= comment.Text %></p>
+                    </div>
+                  </li>
+                <% } %>
+              <% }); %>
+            </ul>
+          </div>
+        
+          <script>
+            // Toggle visibility of flagged comments
+            document.getElementById('toggle-flagged-comments').addEventListener('click', function () {
+              const container = document.getElementById('flagged-comments-container');
+              if (container.style.display === 'none') {
+                container.style.display = 'block';
+                this.textContent = 'Hide Flagged Comments';
+              } else {
+                container.style.display = 'none';
+                this.textContent = 'Show Flagged Comments';
+              }
+            });
+          </script>
+        </div>
+      </div>
+    </section>
+    <footer>
+      <%- include('templates/footer') %>
+    </footer>
+  </main>
+  <script src="../javascripts/imgViewer.js"></script>
+  <script src="../javascripts/anncFocus.js"></script>
+</body>
+</html>

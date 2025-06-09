@@ -1,0 +1,163 @@
+header{
+  display: flex;
+}
+header img{
+  width: 100%;
+}
+
+#slogan{
+  background: var(--l-gray-1);
+  display: flex;
+  justify-content: center;
+  padding: 30px 0;
+}
+#slogan h1{
+  font-family: 'Oswald';
+  letter-spacing: 4px;
+  font-size: var(--fs-30-36);
+}
+
+#homeAbout .cont{
+  display: flex;
+  flex-direction: column;
+}
+#homeAbout h1{
+  margin-bottom: 8px;
+}
+#homeAbout img{
+  height: 60%;
+  max-height: 150px;
+  margin-inline: auto;
+  filter: drop-shadow(6px 10px 6px hsla(0, 0%, 0%, 0.4));
+}
+#homeAbout :is(.mission, .vision){
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+#homeAbout :is(.mission, .vision) > div{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  aspect-ratio: 5 / 2 ;
+  width: 100%;
+  height: 100%;
+}
+#homeAbout :is(.mission, .vision) .txt{
+  color: var(--white);
+  padding: 25px;
+  box-shadow: 10px 10px 30px -10px rgba(0,0,0,0.4);
+}
+#homeAbout .mission .txt{
+  background: var(--blue-2);
+}
+#homeAbout .vision .txt{
+  background: var(--red-2);
+}
+
+#anncLatest h1{
+  margin-bottom: 10px;
+}
+#anncLatest .cont > div{
+  display: grid;
+  grid-template-columns: 1fr 265px;
+  width: 100%;
+  gap: 20px;
+}
+#anncLatest ul{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#anncLatest :where(li, .big){
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+#anncLatest :where(ul, .big) img{
+  object-fit: cover;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
+#anncLatest :where(ul, .big) h2{
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--fs-16-20);
+}
+#anncLatest :where(ul, .big) p{
+  color: var(--gray);
+  font-size: var(--fs-12-14);
+}
+
+
+/* --==Responsive==-- */
+@media(max-width: 1400px){
+  #anncLatest .cont > div{
+    grid-template-columns: 1fr 240px;
+  }
+
+}
+@media(max-width: 1250px){
+  #anncLatest .cont > div{
+    grid-template-columns: 1fr 180px;
+  }
+
+  #homeAbout :is(.mission, .vision) > div{
+    aspect-ratio: 2 / 1 ;
+  }
+}
+@media(max-width: 940px){
+  #slogan{
+    padding: 20px 0;
+  }
+
+  #homeAbout :is(.mission, .vision) > div{
+    aspect-ratio: 5 / 3 ;
+  }
+  #homeAbout :is(.mission, .vision) .txt{
+    padding: 20px;
+  }
+  
+  #anncLatest .cont > div{
+    display: flex;
+    flex-direction: column;
+  }
+  #anncLatest ul{
+    display: grid;
+    grid-template-columns: repeat(3, 250px);
+    overflow-y: hidden;
+  }
+  
+}
+@media(max-width: 780px){
+  #homeAbout img{
+    max-height: 120px;
+  }
+  #homeAbout :is(.mission, .vision) > div{
+    aspect-ratio: auto ;
+  }
+  #homeAbout :is(.mission, .vision) .txt {
+    padding: 15px;
+  }
+}
+@media(max-width: 560px){
+  #slogan h1{
+    font-size: 26px;
+    letter-spacing: 1px;
+  }
+  
+  #homeAbout .cont{
+    gap: 15px;
+  }
+  #homeAbout :is(.mission, .vision){
+    display: flex;
+    flex-direction: column;
+  }
+  #homeAbout :is(.mission, .vision) .imgCont{
+    display: none;
+  }
+  #homeAbout :is(.mission, .vision) .txt{
+    box-shadow: 10px 10px 15px -10px rgba(0,0,0,0.5);
+  }
+}

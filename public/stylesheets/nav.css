@@ -1,0 +1,73 @@
+:root{
+  --navWidth: 48px;
+}
+nav{
+  --NavTextColor: hsl(0, 0%, 20%);
+
+  background: hsl(0, 0%, 94%);
+  color: var(--NavTextColor);
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  height: 100vh;
+}
+
+nav .navLinks{
+  width: max-content;
+}
+nav .navLinks a{
+  text-decoration: none;
+  text-transform: uppercase;
+  color: var(--NavTextColor);
+  display: grid;
+  grid-template-columns: max-content 0fr;
+  gap: 0px;
+  padding: 12px 15px;
+  cursor: pointer;
+  transition: grid-template-columns 0.3s, gap 0.3s;
+}
+nav .navLinks a img{
+  width: 18px;
+}
+nav .navLinks a p{
+  font-size: var(--fs-12-14);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  max-width: max-content;
+  overflow: hidden;
+}
+nav:hover .navLinks a{
+  gap: 8px;
+  grid-template-columns: max-content 1fr;
+}
+
+main{
+  width: calc(100% - var(--navWidth));
+  margin-left: var(--navWidth);
+}
+
+/* --==Responsive==-- */
+@media(max-width: 1400px){
+  
+}
+@media(max-width: 1250px){
+  
+}
+@media(max-width: 940px){
+  
+}
+@media(max-width: 780px){
+  
+}
+@media(max-width: 560px){
+  :root{
+    --navWidth: 36px;
+  }
+  nav .navLinks a{
+    padding: 12px 10px;
+  }
+  nav .navLinks a img {
+    width: 16px;
+  }
+}

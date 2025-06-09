@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SK Bulakan | Contact Us</title>
+  <link rel="shortcut icon" href="../images/src/sk logo.png" type="png">
+  <link rel="stylesheet" href="../stylesheets/reset.css">
+  <link rel="stylesheet" href="../stylesheets/nav.css">
+  <link rel="stylesheet" href="../stylesheets/contact.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="show">
+    <%- include('templates/navigation') %>
+  </nav>
+  <main>
+    <header>
+      <img src="../images/src/contact header.jpg" alt="header">
+    </header>
+    <section>
+      <div class="cont">
+        <ul class="information">
+          <li>
+            <h2>Office Location</h2>
+            <p>Multi-Purpose Hall, Purok 3, Bambang, Bulakan, Bulacan, 3017</p>
+          </li>
+          <li>
+            <h2>Contact Information</h2>
+            <p>09690687041 (Chairman)</p>
+            <p>(02) 813-1243 (Sangguniang Barangay)</p>
+          </li>
+          <li>
+            <h2>Email</h2>
+            <p>skbambangbulakan@gmail.com</p>
+          </li>
+          <li class="socmed">
+            <h2>Socials</h2>
+            <div>
+              <a href="https://www.facebook.com/profile.php?id=61553843106268" target="_blank">
+                <img src="../images/src/facebook.png" alt="facebook" title="Sangguniang Kabataan - Bambang, Bulakan">
+                <p>Barangay Bambang</p>
+              </a>
+            </div>
+          </li>
+        </ul>
+        <form>
+          <div class="header">
+            <h1>Email Inquiry</h1>
+            <span>Send us a message via the contact form</span>
+          </div>
+          <div class="top">
+            <div>
+              <input type="text" name="firstName" placeholder="First Name" required>
+              <input type="text" name="lastName" placeholder="Last Name" required>
+            </div>
+            <input type="text" name="subject" placeholder="Subject" required>
+            <input type="email" name="email" placeholder="Email" required>
+            <textarea name="body" placeholder="Message" required></textarea>
+          </div>
+          <div class="bottom">
+            <button type="submit">Submit</button>
+          </div>
+        </form> 
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d21824.700850086956!2d120.84716889346016!3d14.763480760138032!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33964d1b1424350b%3A0x27f4270c3665d751!2sBambang%2C%20Bulakan%2C%20Bulacan!5e0!3m2!1sen!2sph!4v1729259571602!5m2!1sen!2sph" style="border:0;" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </section>
+    <footer>
+      <%- include('templates/footer') %>
+    </footer>
+  </main>
+</body>
+</html>

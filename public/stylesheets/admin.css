@@ -1,0 +1,336 @@
+:root{
+  --baseWidth: 200px;
+}
+
+nav[data-nav] .navlinks [data-nav-tabs].selected{
+  font-weight: bold;
+}
+
+main{
+  margin-left: 48px;
+}
+main article{
+  display: none;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+}
+[data-nav-windows].show{
+  display: flex;
+}
+article h1{
+  font-size: var(--fs-20-24);
+}
+main article :is(.addAnnc, .addCouncil){
+  background: var(--l-gray-1);
+  padding: 8px 14px;
+  border: solid 1px var(--l-gray-2);
+  width: fit-content;
+}
+
+form > *:not(:last-child){
+  margin-bottom: 20px;
+}
+form .top{
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+form .top > div{
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+#announcementForm .top input{
+  border: 0;
+  padding: 0;
+  border-bottom: 1px solid black;
+  border-radius: 0;
+}
+#announcementForm .top input:focus{
+  border: 0;
+  border-bottom: 1px solid hsl(0, 0%, 65%);
+}
+#announcementForm .top input[type="text"]{
+  max-width: 300px;
+  width: 100%;
+}
+#announcementForm .top input[type="date"]{
+  width: fit-content;
+}
+#announcementForm label[for="ancMainImg"],
+#councilForm label[for="memberImg"]{
+  align-self: center;
+  height: var(--baseWidth);
+  width: var(--baseWidth);
+}
+#announcementForm .mainImgCont,
+#councilForm .memberImgCont{
+  background: hsl(0, 0%, 90%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: var(--baseWidth);
+  width: var(--baseWidth);
+  cursor: pointer;
+}
+#announcementForm label[for="ancMainImg"].hasImg,
+#announcementForm label[for="ancMainImg"].hasImg .mainImgCont,
+#councilForm label[for="memberImg"].hasImg,
+#councilForm label[for="memberImg"].hasImg .memberImgCont{
+  width: fit-content;
+}
+#announcementForm .mainImgCont p,
+#councilForm .memberImgCont p{
+  position: absolute;
+  bottom: 50%;
+  right: 50%;
+  font-size: var(--fs-12-14);
+  transform: translate(50%, 50%);
+}
+#announcementForm .imagePreview,
+#councilForm .imagePreview{
+  height: var(--baseWidth);
+}
+#announcementForm .titleCont{
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+#announcementForm .mid .galleryImages{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+#announcementForm .mid .galleryImages li{
+  position: relative;
+  display: flex;
+  aspect-ratio: 1;
+}
+#announcementForm .mid .galleryImages li > img{
+  object-fit: cover;
+  height: 100%;
+  width: 100%;
+}
+#announcementForm .mid .galleryImages button{
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 16px;
+}
+#announcementForm .mid .galleryImages button img{
+  width: inherit;
+}
+#announcementForm .mid label[for="ancGalleryImg"]{
+  height: 100%;
+  width: 100%;
+}
+#announcementForm .mid label[for="ancGalleryImg"] div{
+  background: hsl(0, 0%, 90%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 32px;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+}
+form .bottom{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+form .bottom .errorMsg{
+  opacity: 0;
+  color: hsl(0, 87%, 49%);
+}
+form .bottom button{
+  background: var(--l-gray-1);
+  font-size: var(--fs-12-14);
+  padding: 8px 14px;
+  border: solid 1px var(--l-gray-2);
+  width: fit-content;
+}
+#councilForm .top .inputs{
+  max-width: 540px;
+  margin-inline: auto;
+  gap: 10px;
+}
+#councilForm .top .inputs div{
+  display: flex;
+  gap: 10px;
+}
+#councilForm .top .inputs input{
+  width: 100%;
+}
+
+
+.anncPreview{
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.anncPreview li{
+  background: var(--l-gray-1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+}
+.anncPreview .ancMain{
+  display: flex;
+  gap: 15px;
+}
+.anncPreview .mainImg{
+  height: 200px;
+}
+.anncPreview .txt{
+  display: flex;
+  flex-direction: column;
+}
+.anncPreview .txt span{
+  font-size: var(--fs-12-14);
+  margin: 7px 0 12px;
+}
+.anncPreview .icon{
+  background: var(--l-gray-2);
+  position: absolute;
+  padding: 10px 12px;
+  top: 0px;
+  right: 0px;
+  display: flex;
+  gap: 10px;
+}
+.anncPreview .icon svg{
+  height: var(--fs-14-16);
+  cursor: pointer;
+}
+.anncPreview .ancGallery{
+  display: none;
+}
+.anncPreview .ancGallery:has(> img){
+  display: flex;
+  width: 100%;
+  overflow: auto hidden;
+  gap: 5px;
+}
+.anncPreview .ancGallery img{
+  height: 100px;
+}
+
+.councilPreview{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+.councilPreview li{
+  /* background: var(--l-gray-1); */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.councilPreview img{
+  width: 100%;
+}
+.councilPreview .txt{
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 5px;
+}
+.councilPreview p{
+  font-weight: 600;
+  color: var(--black);
+}
+.councilPreview .icon{
+  background: var(--l-gray-2);
+  position: absolute;
+  padding: 10px 12px;
+  top: 0px;
+  right: 0px;
+  display: flex;
+  gap: 10px;
+}
+.councilPreview .icon svg{
+  height: var(--fs-14-16);
+  cursor: pointer;
+}
+/* .councilPreview span{
+  color: var(--gray);
+} */
+
+.course-modal.show,
+.course-modal article.show{ display: flex; }
+.course-modal{
+  display: none;
+  justify-content: center;
+  align-items: center;
+  background: hsla(222, 2%, 6%, 60%);
+  z-index: 10;
+  position: fixed;
+  height: 100%;
+  width: 100%;
+}
+.course-modal article{
+  background: #fff;
+  display: none;
+  flex-direction: column;
+  overflow: hidden auto;
+  width: 900px;
+  height: 90vh;
+  padding: 20px;
+  box-shadow: 0 0 90px hsla(0, 0%, 0%, 0.35);
+}
+.course-modal article h1{
+  margin-bottom: 12px;
+}
+.course-modal .closeBtn{
+  position: absolute;
+  top: 10px;
+  right: 30px;
+  width: 20px;
+  color: var(--white-1);
+}
+
+/* --==Responsive==-- */
+@media(max-width: 1400px){
+
+}
+@media(max-width: 1250px){
+
+}
+@media(max-width: 940px){
+  .anncPreview .mainImg{
+    height: 180px;
+  }
+  .anncPreview .ancGallery img{
+    height: 90px;
+  }
+}
+@media(max-width: 780px){
+  .anncPreview .ancMain{
+    flex-direction: column;
+    width: 100%;
+  }
+  .anncPreview .mainImg{
+    width: fit-content;
+    height: 160px;
+    margin-inline: auto;
+  }
+  .anncPreview .ancGallery img{
+    height: 80px;
+  }
+}
+@media(max-width: 560px){
+  #announcementForm .mid .galleryImages{
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #councilForm .top .inputs div{
+    flex-direction: column;
+  }
+}

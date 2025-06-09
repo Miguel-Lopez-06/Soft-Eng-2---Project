@@ -1,0 +1,86 @@
+header{
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: fit-content;
+}
+header .mainImg{
+  z-index: 1;
+  height: auto;
+  width: auto;
+  max-height: 300px;
+  max-width: 100%;
+}
+header .bgImg{
+  filter: blur(10px);
+  position: absolute;
+  top: 0;
+  z-index: 0;
+  width: 100%;
+}
+main .mainAbout{
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  gap: 15px;
+}
+main .left{
+  position: sticky;
+}
+main .right h1{
+  color: var(--blue-3);
+  font-size: var(--fs-20-24);
+  margin-bottom: 8px;
+}
+
+.councilMembers{
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+.councilMembers ul:nth-child(2){
+  margin-top: 50px;
+}
+.councilMembers .councilList{
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.councilMembers .councilList li{
+  display: flex;
+}
+.councilMembers .councilList img{
+  width: 220px;
+  border-radius: 12px;
+}
+
+/* --==Responsive==-- */
+@media(max-width: 1400px){
+  
+}
+@media(max-width: 1250px){
+  .councilMembers .councilList img{
+    width: 175px;
+  }
+
+}
+@media(max-width: 940px){
+  main .mainAbout{
+    display: flex;
+    flex-direction: column;
+  }
+  main .left{
+    position: static;
+  }
+  .councilMembers .councilList img{
+    width: 100%;
+  }
+
+}
+@media(max-width: 780px){
+  
+}
+@media(max-width: 560px){
+  
+}
