@@ -1,6 +1,45 @@
 var express = require('express');
 var router = express.Router();
 var con = require('../config/db');
+var multer = require('multer');
+var path = require('path');
+
+// --- Multer Configuration ---
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/images/announcements/')
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image and video files are allowed!'), false);
+        }
+    }
+});
+// --- End Multer Configuration ---
+
+// --- Middleware to log admin actions ---
+function logAdminAction(req, res, next) {
+    if (req.session.AdminID) {
+        const action = `${req.method} ${req.originalUrl}`;
+        con.run('INSERT INTO admin_logs (AdminID, Action) VALUES (?, ?)', [req.session.AdminID, action], (err) => {
+            if (err) {
+                console.error('Error logging admin action:', err);
+            }
+        });
+    }
+    next();
+}
+// --- End Middleware ---
+
 
 const loadData = (tableNames) => {
   const selectQuery = tableNames.map((tableName) => {
@@ -28,6 +67,7 @@ router.get('/login', function(req, res){
     res.render('login');
   }
 });
+
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -40,6 +80,10 @@ router.post('/login', (req, res) => {
       
       if(user.length && password === user[0].Password){
         req.session.AdminID = user[0].AdminID;
+        const loginAction = `Login: User '${username}' successfully logged in.`;
+        con.run('INSERT INTO admin_logs (AdminID, Action) VALUES (?, ?)', [user[0].AdminID, loginAction], (logErr) => {
+            if (logErr) console.error('Error logging login action:', logErr);
+        });
         return res.status(200).json({ success: true, message: 'Login successful' });
       }
       else{
@@ -51,6 +95,7 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ success: false, message: 'An account has already been logged in.' });
   }
 });
+
 router.get('/', (req, res) => {
   if(req.session.AdminID){
     res.render('admin');
@@ -64,7 +109,6 @@ router.get('/', (req, res) => {
 router.get('/anncGet', function (req, res) {
   loadData(['announcement', 'gallery images', 'comments'])
     .then(([announcements, galImages, comments]) => {
-      // Add a flag to each announcement to indicate if it has flagged comments
       const announcementsWithFlagged = announcements.map((announcement) => {
         const hasFlaggedComments = comments.some(
           (comment) =>
@@ -87,69 +131,134 @@ router.get('/anncGet', function (req, res) {
       res.status(500).json({ success: false, message: `Cannot load ${tableName}` });
     });
 });
-router.post('/anncAdd', function(req, res){
-  const { title, description, mainImg, galleryImgs } = req.body;
 
-  con.run('INSERT INTO announcement (AdminID, Title, Description, Image, DatePosted) VALUES(?, ?, ?, ?, ?)', [1, title, description, mainImg, new Date().toISOString()], function (err){
-    if(err){
-      console.error('Error inserting announcement', err);
-      return res.status(500).json({ success: false, message: 'Error inserting announcement' });
+router.post('/anncAdd', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), function(req, res){
+  if (!req.session.AdminID) {
+    return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+  }
+
+  const { title, description } = req.body;
+  const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : null;
+  const galleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(file => '/images/announcements/' + file.filename) : [];
+
+  con.serialize(() => {
+    con.run("BEGIN TRANSACTION;");
+
+    const stmt = con.prepare('INSERT INTO announcement (AdminID, Title, Description, Image, DatePosted) VALUES(?, ?, ?, ?, ?)');
+    stmt.run(req.session.AdminID, title, description, mainImgPath, new Date().toISOString(), function (err){
+      if(err){
+        console.error('Error inserting announcement', err);
+        con.run("ROLLBACK;");
+        return res.status(500).json({ success: false, message: 'Error inserting announcement' });
+      }
+      
+      const announcementId = this.lastID;
+      const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES(?, ?, ?)');
+      galleryImgPaths.forEach((path, i) => {
+        galStmt.run(announcementId, i, path);
+      });
+
+      galStmt.finalize((err) => {
+        if (err) {
+            console.error('Error finalizing gallery images', err);
+            con.run("ROLLBACK;");
+            return res.status(500).json({ success: false, message: 'Error saving gallery images' });
+        }
+        con.run("COMMIT;", (commitErr) => {
+            if (commitErr) {
+                console.error('Error committing transaction', commitErr);
+                con.run("ROLLBACK;");
+                return res.status(500).json({ success: false, message: 'Error finalizing transaction' });
+            }
+            res.status(200).json({ success: true, message: 'Records successfully added!' });
+        });
+      });
+    });
+    stmt.finalize();
+  });
+});
+
+router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), function(req, res){
+    if (!req.session.AdminID) {
+      return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
     }
-    
-    const announcementId = this.lastID;
 
-    for(let i = 0; i < 20; i++){
-      con.run('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES(?, ?, ?)', [announcementId, i, galleryImgs[i]], (err) => {
+    const { id, title, description } = req.body;
+    const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : req.body.existingMainImg;
+    let galleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(file => '/images/announcements/' + file.filename) : [];
+    
+    // Combine new paths with existing paths from the form
+    if (req.body.existingGalleryImgs) {
+        // Ensure it's an array if only one is sent
+        const existing = Array.isArray(req.body.existingGalleryImgs) ? req.body.existingGalleryImgs : [req.body.existingGalleryImgs];
+        galleryImgPaths = galleryImgPaths.concat(existing);
+    }
+  
+    con.serialize(() => {
+      con.run("BEGIN TRANSACTION;");
+  
+      con.run('UPDATE announcement SET AdminID = ?, Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?', [req.session.AdminID, title, description, mainImgPath, id], (err) => {
         if(err){
-          console.error('Error inserting gallery image', err);
-          return res.status(500).json({ success: false, message: 'Error inserting gallery image' });
+          console.error('Error updating announcement', err);
+          con.run("ROLLBACK;");
+          return res.status(500).json({ success: false, message: 'Error updating announcement' });
         }
       });
-    }
-    res.status(200).json({ success: true, message: 'Records successfully added!' });
-  });
-});
-router.post('/anncUpdate', function(req, res){
-  const { id, title, description, mainImg, galleryImgs } = req.body;
-
-  con.run('UPDATE announcement SET AdminID = ?, Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?', [1, title, description, mainImg, id], (err, row) => {
-    if(err){
-      console.error('Error updating announcement', err);
-      return res.status(500).json({ success: false, message: 'Error updating announcement' });
-    }
-  });
-  for(let i = 0; i < 20; i++){
-    con.run('UPDATE `gallery images` SET ImagePath = ? WHERE Pos = ? AND AnnouncementID = ?', [galleryImgs[i], i, id], (err, row) => {
-      if(err){
-        console.error('Error updating gallery image', err);
-        return res.status(500).json({ success: false, message: 'Error updating gallery image' });
-      }
+    
+      con.run('DELETE FROM `gallery images` WHERE AnnouncementID = ?', id, (err) => {
+        if(err){
+            console.error('Error deleting gallery images', err);
+            con.run("ROLLBACK;");
+            return res.status(500).json({ success: false, message: 'Error clearing old gallery images' });
+        }
+        
+        const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES(?, ?, ?)');
+        galleryImgPaths.forEach((path, i) => {
+            galStmt.run(id, i, path);
+        });
+  
+        galStmt.finalize((err) => {
+          if(err) {
+              console.error('Error finalizing gallery images update', err);
+              con.run("ROLLBACK;");
+              return res.status(500).json({ success: false, message: 'Error saving new gallery images' });
+          }
+          con.run("COMMIT;", (commitErr) => {
+            if (commitErr) {
+                console.error('Error committing transaction', commitErr);
+                con.run("ROLLBACK;");
+                return res.status(500).json({ success: false, message: 'Error finalizing transaction' });
+            }
+            res.status(200).json({ success: true, message: 'Records successfully updated!' });
+          });
+        });
+      });
     });
-  }
-  res.status(200).json({ success: true, message: 'Records successfully updated!' });
 });
-router.post('/anncDelete', function(req, res){
-  const { id } = req.body;
 
-  con.run('DELETE FROM `gallery images` WHERE AnnouncementID = ?', id, (err, row) => {
-    if(err){
-      console.error('Error deleting gallery images', err);
-      return res.status(500).json({ success: false, message: 'Error deleting gallery images' });
-    }
+
+router.post('/anncDelete', logAdminAction, function(req, res){
+  if (!req.session.AdminID) {
+    return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+  }
+
+  const { id } = req.body;
+  
+  con.serialize(() => {
+    con.run('DELETE FROM `gallery images` WHERE AnnouncementID = ?', id, (err) => {
+      if(err) console.error('Error deleting gallery images', err);
+    });
+    con.run('DELETE FROM comments WHERE AnnouncementID = ?', id, (err) => {
+      if(err) console.error('Error deleting comments', err);
+    });
+    con.run('DELETE FROM announcement WHERE AnnouncementID = ?', id, (err) => {
+      if(err){
+        console.error('Error deleting announcement', err);
+        return res.status(500).json({ success: false, message: 'Error deleting announcement' });
+      }
+      res.status(200).json({ success: true, message: 'Records successfully deleted!' });
+    });
   });
-  con.run('DELETE FROM comments WHERE AnnouncementID = ?', id, (err, row) => {
-    if(err){
-      console.error('Error deleting comments', err);
-      return res.status(500).json({ success: false, message: 'Error deleting comments' });
-    }
-  });
-  con.run('DELETE FROM announcement WHERE AnnouncementID = ?', id, (err, row) => {
-    if(err){
-      console.error('Error deleting announcement', err);
-      return res.status(500).json({ success: false, message: 'Error deleting announcement' });
-    }
-  });
-  res.status(200).json({ success: true, message: 'Records successfully deleted!' });
 });
 
 // COUNCIL MEMBERS
@@ -167,41 +276,44 @@ router.get('/councilGet', function(req, res){
     res.status(500).json({ success: false, message: 'Cannot load council members data' });
   });
 });
-router.post('/councilAdd', function(req, res){
+
+router.post('/councilAdd', logAdminAction, function(req, res){
   const { image, firstName, mInitial, lastName, position } = req.body;
 
-  con.run('INSERT INTO `council members` (FirstName, MiddleInitial, LastName, Position, Image) VALUES(?, ?, ?, ?, ?)', [firstName, mInitial, lastName, position, image], (err, row) => {
+  con.run('INSERT INTO `council members` (FirstName, MiddleInitial, LastName, Position, Image) VALUES(?, ?, ?, ?, ?)', [firstName, mInitial, lastName, position, image], (err) => {
     if(err){
       console.error('Error inserting council member', err);
       return res.status(500).json({ success: false, message: 'Error inserting council member' });
     }
+    res.status(200).json({ success: true, message: 'Record successfully inserted!' });
   });
-  res.status(200).json({ success: true, message: 'Record successfully inserted!' });
 });
-router.post('/councilUpdate', function(req, res){
+
+router.post('/councilUpdate', logAdminAction, function(req, res){
   const { id, image, firstName, mInitial, lastName, position } = req.body;
 
-  con.run('UPDATE `council members` SET FirstName = ?, MiddleInitial = ?, LastName = ?, Position = ?, Image = ? WHERE CouncilID = ?', [firstName, mInitial, lastName, position, image, id], (err, row) => {
+  con.run('UPDATE `council members` SET FirstName = ?, MiddleInitial = ?, LastName = ?, Position = ?, Image = ? WHERE CouncilID = ?', [firstName, mInitial, lastName, position, image, id], (err) => {
     if(err){
       console.error('Error updating council member', err);
       return res.status(500).json({ success: false, message: 'Error updating council member' });
     }
+    res.status(200).json({ success: true, message: 'Records successfully updated!' });
   });
-  res.status(200).json({ success: true, message: 'Records successfully updated!' });
 });
-router.post('/councilDelete', function(req, res){
+
+router.post('/councilDelete', logAdminAction, function(req, res){
   var { id } = req.body;
 
-  con.run('DELETE FROM `council members` WHERE CouncilID = ?', id, (err, row) => {
+  con.run('DELETE FROM `council members` WHERE CouncilID = ?', id, (err) => {
     if(err){
       console.error('Error deleting council member', err);
       return res.status(500).json({ success: false, message: 'Error deleting council member' });
     }
+    res.status(200).json({ success: true, message: 'Records successfully deleted!' });
   });
-  res.status(200).json({ success: true, message: 'Records successfully deleted!' });
 });
 
-// Fetch flagged comments
+// COMMENTS
 router.get('/flaggedComments', (req, res) => {
   con.all('SELECT * FROM comments WHERE Status = ?', ['flagged'], (err, rows) => {
     if (err) {
@@ -212,8 +324,7 @@ router.get('/flaggedComments', (req, res) => {
   });
 });
 
-// Approve a flagged comment
-router.post('/approveComment', (req, res) => {
+router.post('/approveComment', logAdminAction, (req, res) => {
   const { commentId } = req.body;
   con.run('UPDATE comments SET Status = ? WHERE CommentID = ?', ['approved', commentId], (err) => {
     if (err) {
@@ -224,8 +335,7 @@ router.post('/approveComment', (req, res) => {
   });
 });
 
-// Delete a flagged comment
-router.post('/deleteComment', (req, res) => {
+router.post('/deleteComment', logAdminAction, (req, res) => {
   const { commentId } = req.body;
   con.run('DELETE FROM comments WHERE CommentID = ?', [commentId], (err) => {
     if (err) {

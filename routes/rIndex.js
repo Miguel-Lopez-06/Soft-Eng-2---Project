@@ -160,21 +160,33 @@ router.get('/Announcement/:id', function (req, res) {
     });
 });
 router.get('/Announcement/:id/getComments', function (req, res) {
-  const { id } = req.params;
+    const { id } = req.params;
 
-  con.all(
-    'SELECT * FROM comments WHERE AnnouncementID = ? ORDER BY CommentDate DESC', // Ensure consistent ordering
-    [id],
-    function (err, rows) {
-      if (err) {
-        console.error('Cannot load data', err);
-        res.status(500).json({ success: false, message: 'Cannot load data' });
-      } else {
-        res.status(200).json({ success: true, message: 'Records successfully fetched!', data: rows });
-      }
-    }
-  );
+    con.all(
+        'SELECT * FROM comments WHERE AnnouncementID = ? AND ParentCommentID IS NULL AND isArchived = 0 ORDER BY CommentDate DESC',
+        [id],
+        function (err, parentComments) {
+            if (err) {
+                // ... (error handling)
+            } else {
+                const promises = parentComments.map(parent => {
+                    return new Promise((resolve, reject) => {
+                        con.all('SELECT * FROM comments WHERE ParentCommentID = ? AND isArchived = 0 ORDER BY CommentDate ASC', [parent.CommentID], (err, replies) => {
+                            if (err) reject(err);
+                            parent.replies = replies;
+                            resolve(parent);
+                        });
+                    });
+                });
+
+                Promise.all(promises).then(data => {
+                    res.status(200).json({ success: true, message: 'Records successfully fetched!', data: data });
+                });
+            }
+        }
+    );
 });
+
 router.post('/Announcement/:id/addComment', function (req, res) {
   const { id } = req.params;
   const { text } = req.body;
@@ -193,9 +205,9 @@ router.post('/Announcement/:id/addComment', function (req, res) {
   const status = containsProfanity ? 'flagged' : 'approved'; // Flag comment if profanity is detected
 
   con.run(
-    'INSERT INTO comments (AnnouncementID, Text, CommentDate, Status) VALUES (?, ?, ?, ?)',
-    [id, censoredText, commentDate, status],
-    function (err) {
+    'INSERT INTO comments (AnnouncementID, Text, CommentDate, Status, ParentCommentID) VALUES (?, ?, ?, ?, ?)',
+        [id, censoredText, commentDate, status, parentId],
+        function (err) {
       if (err) {
         console.error('Error adding comment:', err);
         return res.status(500).json({ success: false, message: 'Sorry, your comment contains profanity.' });
@@ -207,6 +219,7 @@ router.post('/Announcement/:id/addComment', function (req, res) {
           : 'Comment added successfully!',
       });
     }
+    
   );
 });
 
