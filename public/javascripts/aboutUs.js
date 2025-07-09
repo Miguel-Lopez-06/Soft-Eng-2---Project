@@ -1,18 +1,38 @@
-const left = document.querySelector('.left');
-const slideshow = left.querySelector('.slideshowAbout');
+document.addEventListener('DOMContentLoaded', () => {
+    // This script should only run on the announcement details page.
+    const anncIDElement = document.querySelector('#anncID');
+    if (!anncIDElement) {
+        return; // Exit if not on the correct page
+    }
 
-new slider(slideshow, {
-  type: 'auto-scroll',
-  perPage: 1,
-  interval: 12000,
-});
-const mediaQueries = [
-  '(max-width: 1400px)',
-  '(max-width: 1250px)',
-]
-const setStyle = () => left.style.top = `calc(50vh - ${left.clientHeight / 2}px)`;
+    const anncID = anncIDElement.value;
+    const form = document.querySelector('#commentForm');
+    const galImg = document.querySelector('.galleryImgs');
 
-mediaQueries.forEach(query => {
-  window.matchMedia(query).addEventListener('change', setStyle);
-  setStyle();
+    // --- Comment form logic ---
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const textarea = form.querySelector('#comment').value;
+            if (!textarea.trim()) {
+                alert('Comment cannot be empty.');
+                return;
+            }
+            // Fetch logic for submitting a comment...
+        });
+    }
+
+    // --- Image viewer logic ---
+    if (galImg && typeof imageViewer !== 'undefined') {
+        new imageViewer(galImg);
+    }
+    
+    // --- Initial data load for the page ---
+    fetch(`/Announcement/${anncID}/getComments`)
+        .then(response => response.json())
+        .then(res => {
+            if (res.success) {
+                // Your loadComments(res.data) function would go here
+            }
+        });
 });

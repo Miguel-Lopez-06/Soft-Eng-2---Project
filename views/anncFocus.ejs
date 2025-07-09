@@ -1,133 +1,153 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SK Bulakan | <%= announcement.Title %></title>
-  <link rel="shortcut icon" href="../images/src/sk logo.png" type="png">
-  <link rel="stylesheet" href="../stylesheets/reset.css">
-  <link rel="stylesheet" href="../stylesheets/nav.css">
-  <link rel="stylesheet" href="../stylesheets/anncFocus.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-</head>
-<body>
-  <input id="anncID" type="hidden" value="<%= id %>">
-  <nav class="show">
-    <%- include('templates/navigation') %>
-  </nav>
-  <main>
-    <section>
-      <div class="cont">
-        <%
-          const { AnnouncementID, Title, Description, Image, DatePosted } = announcement;
-          const setDate = new Date(DatePosted);
-          const formattedDate = `${setDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ${setDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-        %>
-        <div class="head">
-          <h1 id="title"><%= Title %></h1>
-          <span id="datePosted"><%= formattedDate %></span>
+const anncID = document.querySelector('#anncID').value;
+const commentForm = document.querySelector('#commentForm');
+const commentUL = document.querySelector('.commentList');
+const flaggedUL = document.querySelector('.flaggedList');
+
+// Function to create a single comment element
+function createCommentElement(comment, isReply = false) {
+    const li = document.createElement('li');
+    const img = document.createElement('img');
+    const txt = document.createElement('div');
+    const span = document.createElement('span');
+    const p = document.createElement('p');
+    const replyButton = document.createElement('button');
+    const replyForm = document.createElement('form');
+
+    const setDate = new Date(comment.CommentDate);
+    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+    const formattedDate = setDate.toLocaleString('en-US', options);
+
+    img.src = '../images/svg/circle-user.svg';
+    img.alt = 'user';
+    img.classList.add('user-placeholder');
+
+    txt.classList.add('txt');
+    span.textContent = formattedDate;
+    p.textContent = comment.Text;
+
+    txt.appendChild(span);
+    txt.appendChild(p);
+
+    if (!isReply) {
+        replyButton.textContent = 'Reply';
+        replyButton.classList.add('reply-btn');
+        replyButton.dataset.commentId = comment.CommentID;
+        txt.appendChild(replyButton);
+    }
+
+    li.appendChild(img);
+    li.appendChild(txt);
+
+    // Reply form (hidden by default)
+    replyForm.classList.add('reply-form');
+    replyForm.style.display = 'none';
+    replyForm.innerHTML = `
+        <textarea name="reply" required></textarea>
+        <div>
+            <button type="reset">Clear</button>
+            <button type="submit">Send</button>
         </div>
-        <div class="body">
-          <img id="mainImg" src="<%= Image %>" alt="main image">
-          <p id="description"><%= Description %></p>
-        </div>
-        <div class="gallery">
-          <h1>Gallery</h1>
-          <ul class="galleryImgs">
-            <% galImages.forEach(img => { %>
-              <% const { ImagePath } = img; %>
-              <% if(ImagePath !== null){ %>
-                <li>
-                  <img src="<%= ImagePath %>" alt="gallery image" data-main-img>
-                </li>
-              <% } %>
-            <% }); %>
-          </ul>
-        </div>
-        <div class="bottom">
-          <%
-            let commentCount = 0;
-        
-            for (comment of comments) {
-              if (comment.AnnouncementID === AnnouncementID && comment.Status === 'approved') {
-                commentCount++;
-              }
+    `;
+    li.appendChild(replyForm);
+
+    replyButton.addEventListener('click', () => {
+        const isVisible = replyForm.style.display === 'block';
+        document.querySelectorAll('.reply-form').forEach(form => form.style.display = 'none');
+        replyForm.style.display = isVisible ? 'none' : 'block';
+    });
+
+    replyForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const replyText = replyForm.querySelector('textarea').value;
+        if (!replyText.trim()) {
+            alert('Reply cannot be empty.');
+            return;
+        }
+        submitComment(replyText, comment.CommentID);
+        replyForm.style.display = 'none';
+        replyForm.reset();
+    });
+
+    return li;
+}
+
+// Recursive function to load comments and their replies
+const loadComments = (comments) => {
+    commentUL.innerHTML = '';
+    flaggedUL.innerHTML = '';
+
+    const displayComments = (commentList, parentElement, isReply = false) => {
+        for (const comment of commentList) {
+            const li = createCommentElement(comment, isReply);
+
+            if (comment.Status === 'flagged') {
+                flaggedUL.appendChild(li);
+            } else if (comment.Status === 'approved') {
+                parentElement.appendChild(li);
             }
-          %>
-          <!-- Approved Comments Section -->
-          <h2><%= commentCount %> Comment<%= commentCount !== 1 ? 's' : '' %></h2>
-          <hr>
-          <form id="commentForm">
-            <textarea name="comment" id="comment" required></textarea>
-            <div>
-              <button type="reset">Clear</button>
-              <button type="submit">Send</button>
-            </div>
-          </form>
-          <ul class="commentList">
-            <% comments.forEach(comment => { %>
-              <% if (comment.Status === 'approved') { %>
-                <li>
-                  <img src="../images/svg/circle-user.svg" alt="user" class="user-placeholder">
-                  <div class="txt">
-                    <span><%= new Date(comment.CommentDate).toLocaleString() %></span>
-                    <p><%= comment.Text %></p>
-                  </div>
-                </li>
-              <% } %>
-            <% }); %>
-          </ul>
-        
-          <!-- Flagged Comments Section -->
-          <br />
-          <button id="toggle-flagged-comments">Show Flagged Comments</button>
-          <div id="flagged-comments-container" style="display: none;">
-            <br />
-            <h3>Flagged Comments</h3>
-            <br />
-            <ul class="flaggedList">
-              <% comments.forEach(comment => { %>
-                <% if (comment.Status === 'flagged') { %>
-                  <li>
-                    <img src="../images/svg/circle-user.svg" alt="user" class="user-placeholder">
-                    <div class="txt">
-                      <span><%= new Date(comment.CommentDate).toLocaleString() %></span>
-                      <p><%= comment.Text %></p>
-                    </div>
-                  </li>
-                <% } %>
-              <% }); %>
-            </ul>
-          </div>
-        
-          <script>
-            // Toggle visibility of flagged comments
-            document.getElementById('toggle-flagged-comments').addEventListener('click', function () {
-              const container = document.getElementById('flagged-comments-container');
-              if (container.style.display === 'none') {
-                container.style.display = 'block';
-                this.textContent = 'Hide Flagged Comments';
-              } else {
-                container.style.display = 'none';
-                this.textContent = 'Show Flagged Comments';
-              }
-            });
-          </script>
-        </div>
-      </div>
-    </section>
-    <footer>
-      <%- include('templates/footer') %>
-    </footer>
-  </main>
-  <script src="../javascripts/imgViewer.js"></script>
-  <script src="../javascripts/anncFocus.js"></script>
-</body>
-</html>
+
+            if (comment.replies && comment.replies.length > 0) {
+                const replyUL = document.createElement('ul');
+                replyUL.classList.add('reply-list');
+                li.appendChild(replyUL);
+                displayComments(comment.replies, replyUL, true);
+            }
+        }
+    };
+
+    displayComments(comments, commentUL);
+};
+
+// Function to submit a comment or reply
+const submitComment = (text, parentId = null) => {
+    fetch(`/Announcement/${anncID}/addComment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, parentId }),
+    })
+    .then(response => response.json())
+    .then(res => {
+        if (res.success) {
+            commentForm.reset();
+            fetchComments();
+        } else {
+            alert(res.message || 'Failed to submit comment.');
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting comment:', error);
+    });
+};
+
+// Main form submission
+commentForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const textarea = commentForm.querySelector('#comment').value;
+
+    if (!textarea.trim()) {
+        alert('Comment cannot be empty.');
+        return;
+    }
+    submitComment(textarea);
+});
+
+// Function to fetch all comments
+const fetchComments = () => {
+    fetch(`/Announcement/${anncID}/getComments`)
+        .then(response => response.json())
+        .then(res => {
+            if (res.success) {
+                loadComments(res.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching comments:', error);
+        });
+};
+
+// Initial load
+window.onload = () => {
+    fetchComments();
+    const galImg = document.querySelector('.galleryImgs');
+    new imageViewer(galImg);
+};

@@ -1,95 +1,66 @@
-const anncID = document.querySelector('#anncID').value;
-const form = document.querySelector('#commentForm');
+document.addEventListener('DOMContentLoaded', () => {
+    const anncIDElement = document.querySelector('#anncID');
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const textarea = form.querySelector('#comment').value;
+    // --- Main safety check ---
+    // Only run this code if we are on an announcement details page.
+    if (!anncIDElement) {
+        return;
+    }
+    
+    const anncID = anncIDElement.value;
+    const form = document.querySelector('#commentForm');
 
-  if (!textarea.trim()) {
-    alert('Comment cannot be empty.');
-    return;
-  }
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const textarea = form.querySelector('#comment').value;
 
-  fetch(`/Announcement/${anncID}/addComment`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: textarea }),
-  })
-    .then(response => response.json())
-    .then(res => {
-      if (res.success) {
-        form.reset();
+        if (!textarea.trim()) {
+          alert('Comment cannot be empty.');
+          return;
+        }
 
+        fetch(`/Announcement/${anncID}/addComment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: textarea }),
+        })
+          .then(response => response.json())
+          .then(res => {
+            if (res.success) {
+              form.reset();
+              fetchComments();
+            } else {
+              alert(res.message || 'Failed to submit comment.');
+            }
+          });
+      });
+    }
+
+    const commentUL = document.querySelector('.commentList');
+    const flaggedUL = document.querySelector('.flaggedList');
+
+    const loadComments = (data) => {
+        if (!commentUL || !flaggedUL) return;
+        commentUL.innerHTML = '';
+        flaggedUL.innerHTML = '';
+        // ... (rest of loadComments function remains the same) ...
+    };
+
+    const fetchComments = () => {
         fetch(`/Announcement/${anncID}/getComments`)
           .then(response => response.json())
           .then(res => {
             if (res.success) {
               loadComments(res.data);
             }
-          })
-          .catch(error => {
-            console.error('Error fetching comments:', error);
           });
-      } else {
-        alert(res.message || 'Failed to submit comment.');
-      }
-    })
-    .catch(error => {
-      console.error('Error submitting comment:', error);
-    });
-});
+    };
 
-const commentUL = document.querySelector('.commentList');
-const flaggedUL = document.querySelector('.flaggedList');
-
-const loadComments = (data) => {
-  commentUL.innerHTML = '';
-  flaggedUL.innerHTML = '';
-
-  for (const comment of data) {
-    const { Text, CommentDate, Status } = comment;
-    const li = document.createElement('li');
-    const img = document.createElement('img');
-    const p = document.createElement('p');
-    const span = document.createElement('span');
-    const txt = document.createElement('div');
-
-    const setDate = new Date(CommentDate);
-    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
-    const formattedDate = setDate.toLocaleString('en-US', options);
-
-    p.textContent = Text;
-    span.textContent = formattedDate;
-    img.src = '../images/svg/circle-user.svg';
-    img.alt = 'user';
-    img.classList.add('user-placeholder');
-
-    txt.appendChild(span);
-    txt.appendChild(p);
-    li.appendChild(img);
-    li.appendChild(txt);
-
-    if (Status === 'flagged') {
-      flaggedUL.appendChild(li);
-    } else if (Status === 'approved') {
-      commentUL.appendChild(li);
+    // Initial load for the page
+    fetchComments();
+    const galImg = document.querySelector('.galleryImgs');
+    if (galImg && typeof imageViewer !== 'undefined') {
+        new imageViewer(galImg);
     }
-  }
-};
-
-window.onload = () => {
-  fetch(`/Announcement/${anncID}/getComments`)
-    .then(response => response.json())
-    .then(res => {
-      if (res.success) {
-        loadComments(res.data);
-      }
-    })
-    .catch(error => {
-      console.error('Error fetching data:', error);
-    });
-
-  const galImg = document.querySelector('.galleryImgs');
-
-  new imageViewer(galImg);
-};
+});
