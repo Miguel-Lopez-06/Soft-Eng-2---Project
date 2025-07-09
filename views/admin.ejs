@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="shortcut icon" href="../images/src/sk logo.png" type="png">
-  <link rel="stylesheet" href="../stylesheets/reset.css">
-  <link rel="stylesheet" href="../stylesheets/nav.css">
-  <link rel="stylesheet" href="../stylesheets/admin.css">
+  <link rel="shortcut icon" href="/images/src/sk logo.png" type="png">
+  <link rel="stylesheet" href="/stylesheets/reset.css">
+  <link rel="stylesheet" href="/stylesheets/nav.css">
+  <link rel="stylesheet" href="/stylesheets/admin.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -22,21 +22,27 @@
     <ul class="navLinks">
       <li>
         <a data-nav-tabs="Announcements" class="selected">
-          <img src="../images/svg/megaphone.svg" alt="anncSVG" title="announcements">
+          <img src="/images/svg/megaphone.svg" alt="anncSVG" title="announcements">
           <p>Announcements</p>
         </a>
       </li>
       <li>
         <a data-nav-tabs="Council Members">
-          <img src="../images/svg/users.svg" alt="council">
+          <img src="/images/svg/users.svg" alt="council">
           <p>Council Members</p>
         </a>
       </li>
-    </ul>
+      <li>
+        <a data-nav-tabs="Logs">
+          <img src="/images/svg/logs.svg" alt="logs">
+          <p>Logs</p>
+        </a>
+      </li>
+      </ul>
   </nav>
   <div class="course-modal">
     <button class="closeBtn" onclick="closeModal()">
-      <img src="../images/svg/xmark.svg" loading="lazy" alt="xmark">
+      <img src="/images/svg/xmark.svg" loading="lazy" alt="xmark">
     </button>
     <article class="anncModal">
       <h1></h1>
@@ -122,7 +128,6 @@
       <h1>Posted Announcements</h1>
       <ul class="anncPreview"></ul>
     
-      <!-- Add the Show Flagged Comments Section -->
       <br />
       <button id="toggle-flagged-comments">Show Flagged Comments</button>
       <div id="flagged-comments-container" style="display: none;">
@@ -136,9 +141,28 @@
       <h1>Council Members</h1>
       <ul class="councilPreview"></ul>
     </article>
-  </main>
-  <script src="../javascripts/imgViewer.js"></script>
-  <script src="../javascripts/modals.js"></script>
-  <script src="../javascripts/admin.js"></script>
+
+    <article data-nav-windows="Logs">
+        <h1>Admin Activity Logs</h1>
+        <div class="logs-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Log ID</th>
+                        <th>Admin ID</th>
+                        <th>Action / Details</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody class="logs-tbody">
+                    </tbody>
+            </table>
+        </div>
+    </article>
+</main>
+  
+  <script src="/javascripts/imgViewer.js"></script>
+  <script src="/javascripts/modals.js"></script>
+  <script src="/javascripts/admin.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 const mainTabs = document.querySelectorAll('[data-nav-tabs]');
 const mainWindows = document.querySelectorAll('[data-nav-windows]');
+let logsLoaded = false; // Add this flag
 
 mainTabs.forEach((tab) => {
   tab.addEventListener('click', () => {
@@ -12,6 +13,12 @@ mainTabs.forEach((tab) => {
         window.classList.remove('show');
       }
     });
+
+    // When the "Logs" tab is clicked, fetch the data from the API
+    if (tab.dataset.navTabs === 'Logs' && !logsLoaded) {
+      loadAdminLogs();
+      logsLoaded = true;
+    }
   });
 });
 
@@ -27,6 +34,7 @@ const anncGalImg = anncForm.querySelector('#ancGalleryImg');
 const galImg = anncForm.querySelector('.galleryImages');
 const anncError = anncForm.querySelector('.errorMsg');
 let formType;
+
 
 // --- Helper function to create gallery item previews and store the file data ---
 function createGalleryItem(file) {
@@ -604,3 +612,83 @@ function deleteComment(commentId) {
     })
     .catch(error => console.error('Error deleting comment:', error));
 }
+
+
+/**
+ * Processes log data to calculate analytics and displays them.
+ */
+function displayLogAnalytics(logs) {
+    const analyticsContainer = document.querySelector('.analytics-container');
+    if (!analyticsContainer) return;
+
+    const analytics = {};
+    logs.forEach(log => {
+        if (!analytics[log.AdminID]) {
+            analytics[log.AdminID] = { total: 0, actions: {} };
+        }
+        analytics[log.AdminID].total++;
+        const actionType = log.Action.split(' ')[0].replace(':', '');
+        analytics[log.AdminID].actions[actionType] = (analytics[log.AdminID].actions[actionType] || 0) + 1;
+    });
+
+    let analyticsHTML = '';
+    for (const adminId in analytics) {
+        const data = analytics[adminId];
+        let actionsHTML = '';
+        for (const action in data.actions) {
+            actionsHTML += `<li>${action}: <strong>${data.actions[action]}</strong></li>`;
+        }
+        analyticsHTML += `
+            <div class="analytics-card">
+                <h3>Admin ID: ${adminId}</h3>
+                <p>Total Actions: <strong>${data.total}</strong></p>
+                <ul>${actionsHTML}</ul>
+            </div>
+        `;
+    }
+    analyticsContainer.innerHTML = analyticsHTML || '<p>No activity to analyze.</p>';
+}
+
+/**
+ * Renders the fetched log data into the main table.
+ */
+function displayLogTable(logs) {
+    const tbody = document.querySelector('.logs-tbody');
+    if (!tbody) return;
+
+    if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">No logs found.</td></tr>';
+        return;
+    }
+    const rowsHTML = logs.map(log => `
+        <tr>
+            <td>${log.LogID}</td>
+            <td>${log.AdminID}</td>
+            <td>${log.Action}</td>
+            <td>${new Date(log.Timestamp).toLocaleString('en-US')}</td>
+        </tr>
+    `).join('');
+    tbody.innerHTML = rowsHTML;
+}
+
+/**
+ * Exports the currently stored log data to an Excel file.
+ */
+function exportLogsToSheet() {
+    if (currentLogs.length === 0) {
+        alert('No log data to export.');
+        return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(currentLogs);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "AdminLogs");
+    XLSX.writeFile(workbook, "AdminActivityLogs.xlsx");
+}
+
+// Attach event listener to the export button after the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    const exportBtn = document.getElementById('export-logs-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportLogsToSheet);
+    }
+});

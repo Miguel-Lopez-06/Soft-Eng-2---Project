@@ -346,4 +346,23 @@ router.post('/deleteComment', logAdminAction, (req, res) => {
   });
 });
 
+router.get('/logs', function(req, res) {
+    // Security check to ensure an admin is logged in
+    if (!req.session.adminId) {
+        return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    const sql = "SELECT * FROM admin_logs ORDER BY Timestamp DESC";
+
+    con.all(sql, [], (err, logs) => {
+        if (err) {
+            console.error("Error fetching admin logs:", err);
+            return res.status(500).json({ success: false, message: 'Server error' });
+        }
+        
+        // This route now sends ONLY the log data as a JSON response
+        res.status(200).json({ success: true, logs: logs });
+    });
+});
+
 module.exports = router;
