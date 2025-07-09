@@ -82,16 +82,13 @@ form [type="submit"]{
   border: solid 1px var(--d-gray-2);
   width: fit-content;
 }
-.commentList{
+.commentList {
   display: flex;
   flex-direction: column;
-  gap: 40px;
   padding-inline: 15px;
+  list-style: none;
 }
-.commentList li{
-  display: flex;
-  gap: 10px;
-}
+
 .commentList img{
   width: var(--fs-20-24);
   align-self: flex-start;
@@ -159,4 +156,113 @@ form [type="submit"]{
 }
 @media(max-width: 560px){
   
+}
+.commentList, .flaggedList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between top-level comments */
+  padding-inline: 15px;
+  list-style: none; /* Removes default bullet points */
+}
+
+/* A single comment item (the <li>). It is now a block element. */
+.commentList .comment-item,
+.flaggedList .comment-item {
+  /* The display:flex rule was removed from here. */
+}
+
+/* The wrapper for the icon and main text of a comment */
+.commentList .comment-main,
+.flaggedList .comment-main {
+  display: flex; /* THIS properly aligns the icon and text block */
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* User icon/placeholder image */
+.commentList img,
+.flaggedList img {
+  width: var(--fs-20-24);
+}
+
+/* Container for the date, text, and reply button */
+.commentList .txt,
+.flaggedList .txt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commentList p,
+.flaggedList p {
+  line-height: 140%;
+}
+
+.commentList span,
+.flaggedList span {
+  font-size: var(--fs-14-16);
+  color: var(--d-gray-1);
+}
+
+/* --- NEW STYLES FOR THE REPLY SYSTEM --- */
+
+/* The list that holds all replies underneath a parent comment */
+.replies-list {
+  list-style: none;
+  padding: 0;
+  /* This creates the indentation for the "tree" effect */
+  padding-left: 50px; 
+  margin-top: 15px;
+  /* This adds the vertical line to connect replies visually */
+  border-left: 2px solid #e0e0e0; 
+}
+
+/* Style for the reply button */
+.reply-btn, .cancel-reply-btn {
+  background: none;
+  border: none;
+  color: var(--d-gray-1);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font-size: var(--fs-12-14);
+  width: fit-content;
+}
+
+.reply-btn:hover, .cancel-reply-btn:hover {
+  text-decoration: underline;
+}
+
+/* The reply form itself */
+.reply-form {
+  display: none; /* Hidden by default, JS will show it */
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  /* Aligns the form with the indented replies */
+  margin-left: 50px; 
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Ensure the textarea in the reply form takes full width */
+.reply-form textarea {
+  width: 100%;
+}
+.commentList > .comment-item,
+.flaggedList > .comment-item {
+    /* Adds the separator line below each comment */
+    border-bottom: 1px solid #353030;
+
+    /* Adds space (a "gap") below the line */
+    padding-bottom: 25px;
+    margin-bottom: 25px;
+}
+*/
+.commentList > .comment-item:last-child,
+.flaggedList > .comment-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
