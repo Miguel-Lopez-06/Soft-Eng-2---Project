@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 var con = require('../config/db');
 var multer = require('multer');
-var path = require('path');
+var path = 'path';
 
 // --- Multer Configuration ---
 const storage = multer.diskStorage({
@@ -156,12 +156,13 @@ router.post('/anncAdd', logAdminAction, upload.fields([{ name: 'mainImg', maxCou
 router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), (req, res) => {
   if (!req.session.AdminID) return res.status(401).json({ success: false, message: 'Session expired' });
 
-  const { id, title, description, existingMainImg, existingGalleryImgs } = req.body;
+  const { id, title, description, existingMainImg } = req.body;
+  // FIX: Parse the existingGalleryImgs array from the FormData
+  const existingGalleryImgs = JSON.parse(req.body.existingGalleryImgs || '[]');
+
   const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : existingMainImg;
-  const galleryImgPaths = [
-    ...(req.files.galleryImgs ? req.files.galleryImgs.map(f => '/images/announcements/' + f.filename) : []),
-    ...(Array.isArray(existingGalleryImgs) ? existingGalleryImgs : existingGalleryImgs ? [existingGalleryImgs] : [])
-  ];
+  const newGalleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(f => '/images/announcements/' + f.filename) : [];
+  const galleryImgPaths = [...newGalleryImgPaths, ...existingGalleryImgs.map(img => `../images/announcements/${img}`)];
 
   con.serialize(() => {
     con.run('UPDATE announcement SET AdminID = ?, Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?', 
@@ -172,13 +173,13 @@ router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', max
 
       const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES (?, ?, ?)');
       galleryImgPaths.forEach((path, i) => galStmt.run(id, i, path));
-      galStmt.finalize();
-
-      res.status(200).json({ success: true, message: 'Announcement updated' });
+      galStmt.finalize((err) => {
+        if (err) return res.status(500).json({ success: false, message: 'Error updating gallery images' });
+        res.status(200).json({ success: true, message: 'Announcement updated' });
+      });
     });
   });
 });
-
 
 router.post('/anncDelete', logAdminAction, function(req, res){
   if (!req.session.AdminID) {

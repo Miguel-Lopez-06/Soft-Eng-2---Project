@@ -521,3 +521,38 @@ form .bottom button {
   height: 100px;
   object-fit: cover;
 }
+#announcementForm .imagePreview,
+#councilForm .imagePreview {
+  height: var(--baseWidth);
+  width: var(--baseWidth);
+  object-fit: cover;
+}
+
+/* Targets both img and video in the gallery form preview */
+#announcementForm .mid .galleryImages li > img,
+#announcementForm .mid .galleryImages li > video {
+  object-fit: cover;
+  height: 100%;
+  width: 100%;
+}
+
+/* Targets both main img and video in the announcement list */
+.anncPreview .mainImg {
+  height: 200px;
+  width: 300px; /* Set a fixed width */
+  object-fit: cover;
+}
+
+/* Targets both gallery img and video */
+.anncPreview .ancGallery:has(> img),
+.anncPreview .ancGallery:has(> video) {
+  display: flex;
+  width: 100%;
+  overflow: auto hidden;
+  gap: 5px;
+}
+.anncPreview .ancGallery img,
+.anncPreview .ancGallery video {
+  height: 100px;
+  object-fit: cover;
+}
