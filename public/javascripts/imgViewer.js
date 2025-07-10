@@ -1,23 +1,31 @@
+// kimochei/soft-eng-2---project/Soft-Eng-2---Project-c7a777b30b910032e957ba1fdbe907d8098caa2d/public/javascripts/imgViewer.js
 class imageViewer{
   /**
-   * @param {HTMLElement} list
-   * @param {Object} data
+   * @param {HTMLElement} list The container for the gallery (e.g., .galleryImgs)
    */
-  constructor(list, data){
+  constructor(list){
     this.list = list;
-    this.images = list.querySelectorAll('[data-main-img]');
+    this.mediaItems = list.querySelectorAll('li[data-path]');
     this.article = document.createElement('article');
-    this.selectedImg = document.createElement('img');
+    this.mediaContainer = document.createElement('div');
     this.ul = document.createElement('ul');
-    this.imgs = this.images.length;
-    this.data = {
+    this.mediaCount = this.mediaItems.length;
+    this.currentImg = 0;
 
-    };
+    if (this.mediaCount === 0) return;
 
     document.body.appendChild(this.article);
-    this.article.appendChild(this.selectedImg);
+    this.article.appendChild(this.mediaContainer);
+
+    // --- ADDED START ---
+    // Create and add the exit button
+    const exitButton = document.createElement('div');
+    exitButton.innerHTML = `<svg class="imageViewerExit" xmlns="http://www.w3.org/2000/svg" fill="hsl(0, 0%, 90%)" viewBox="0 0 384 512"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>`;
+    this.article.appendChild(exitButton);
+    this.exitBtn = this.article.querySelector('.imageViewerExit');
+    // --- ADDED END ---
     
-    if(this.images.length > 1){
+    if(this.mediaCount > 1){
       const nextArrow = document.createElement('div');
       nextArrow.innerHTML = `<svg class="nextArrow" xmlns="http://www.w3.org/2000/svg" fill="hsl(0, 0%, 90%)" viewBox="0 0 320 512"><path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>`;
       this.article.appendChild(nextArrow);
@@ -33,160 +41,161 @@ class imageViewer{
     this.style();
     this.initHandlers();
   }
-  style(){
-    const {list, images, article, selectedImg, arrowNext, arrowBack, ul, imgs} = this;
 
-    if(imgs > 1){
-      for(let i = 0; i < images.length; i++){
-        const li = document.createElement('li');
-        const img = document.createElement('img');
-  
-        ul.appendChild(li);
-        li.appendChild(img);
-  
-        Object.assign(li.style, {
-          display: 'flex',
-          cursor: 'pointer',
+  createMediaElement(path, isPreview) {
+      if (typeof path !== 'string' || !path) {
+          return document.createElement('div');
+      }
+      const isVideo = path.endsWith('.mp4') || path.endsWith('.webm') || path.endsWith('.ogg');
+      if (isVideo) {
+          const video = document.createElement('video');
+          video.src = path;
+          video.autoplay = !isPreview;
+          video.controls = !isPreview;
+          video.muted = isPreview;
+          video.loop = isPreview;
+          video.playsInline = true;
+          return video;
+      } else {
+          const img = document.createElement('img');
+          img.src = path;
+          img.loading = 'lazy';
+          return img;
+      }
+  }
+
+  style(){
+    const { mediaItems, article, mediaContainer, ul, mediaCount } = this;
+
+    for (let i = 0; i < mediaItems.length; i++) {
+        const item = mediaItems[i];
+        item.innerHTML = ''; 
+        const thumb = this.createMediaElement(item.dataset.path, true);
+        Object.assign(thumb.style, {
+            width: '100%', height: '100%', objectFit: 'cover'
         });
-  
-        img.src = images[i].src;
-        img.alt = images[i].alt;
+        item.appendChild(thumb);
+    }
+
+    Object.assign(mediaContainer.style, {
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        height: '100%', width: '100%'
+    });
+    
+    if(mediaCount > 1){
+      for(let i = 0; i < mediaItems.length; i++){
+        const mediaSrc = mediaItems[i].dataset.path;
+        if (mediaSrc) {
+            const li = document.createElement('li');
+            const thumb = this.createMediaElement(mediaSrc, true);
+            ul.appendChild(li);
+            li.appendChild(thumb);
+            Object.assign(li.style, {
+              display: 'flex', cursor: 'pointer', height: '60px', width: '60px'
+            });
+            Object.assign(thumb.style, {
+                width: '100%', height: '100%', objectFit: 'cover'
+            });
+        }
       }
       article.appendChild(ul);
     }
 
     Object.assign(article.style, {
-      background: 'hsla(0, 0%, 0%, 60%)',
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      display: 'none',
-      justifyContent: 'center',
-      alignContent: 'center',
-      paddingBlock: '50px',
-      height: '100vh',
-      width: '100%',
-      zIndex: '10',
-    });
-    Object.assign(selectedImg.style, {
-      display: 'block',
-      alignSelf: 'center',
-      height: 'fit-content',
-      maxHeight: '100%',
-      width: 'auto',
-      maxWidth: 'calc(100% - 70px)',
-      userSelect: 'none',
+      background: 'hsla(0, 0%, 0%, 60%)', position: 'fixed',
+      top: '0', left: '0', display: 'none', flexDirection: 'column',
+      justifyContent: 'center', alignItems: 'center', paddingBlock: '50px',
+      height: '100vh', width: '100%', zIndex: '10',
     });
     Object.assign(ul.style, {
-      position: 'absolute',
-      bottom: '0',
-      display: 'flex',
-      justifyContent: 'center',
-      gap: '3px',
-      height: '60px',
-      marginBottom: '10px',
-      userSelect: 'none',
+      position: 'absolute', bottom: '10px', display: 'flex',
+      justifyContent: 'center', gap: '5px', padding: '5px',
+      borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.2)', userSelect: 'none',
     });
-    if(imgs > 1){
-      Object.assign(arrowNext.style, {
-        position: 'absolute',
-        bottom: '50%',
-        right: '10px',
-        transform: 'translateY(50%)',
-        height: '20px',
-        cursor: 'pointer',
+    if(mediaCount > 1){
+      Object.assign(this.arrowNext.style, {
+        position: 'absolute', top: '50%', right: '10px',
+        transform: 'translateY(-50%)', height: '25px', cursor: 'pointer',
+        filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.5))'
       });
-      Object.assign(arrowBack.style, {
-        position: 'absolute',
-        bottom: '50%',
-        left: '10px',
-        transform: 'translateY(50%)',
-        height: '20px',
-        cursor: 'pointer',
+      Object.assign(this.arrowBack.style, {
+        position: 'absolute', top: '50%', left: '10px',
+        transform: 'translateY(-50%)', height: '25px', cursor: 'pointer',
+        filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.5))'
       });
     }
+
+    // --- ADDED START ---
+    // Style for the new exit button
+    if(this.exitBtn) {
+        Object.assign(this.exitBtn.style, {
+            position: 'absolute',
+            top: '20px',
+            right: '25px',
+            height: '22px',
+            cursor: 'pointer',
+            zIndex: '11' // Ensure it's above other elements
+        });
+    }
+    // --- ADDED END ---
   }
+  
+  updateMediaView(){
+      this.mediaContainer.innerHTML = ''; 
+      const currentMediaItem = this.mediaItems[this.currentImg];
+      if (!currentMediaItem || !currentMediaItem.dataset.path) {
+        return;
+      }
+      const path = currentMediaItem.dataset.path;
+      const element = this.createMediaElement(path, false);
+      Object.assign(element.style, {
+        display: 'block', alignSelf: 'center', maxHeight: 'calc(100% - 80px)',
+        maxWidth: 'calc(100% - 70px)', userSelect: 'none', borderRadius: '4px'
+      });
+      this.mediaContainer.appendChild(element);
+  }
+
   initHandlers(){
-    const {list, images, article, selectedImg, arrowNext, arrowBack, ul, imgs} = this;
-    let currentImg;
-    let translateVal;
-    let imgWidth = [];
-
-    const updateCurrentImg = () => {
-      selectedImg.src = images[currentImg].src;
-      selectedImg.alt = images[currentImg].alt;
+    const {list, mediaItems, article, ul } = this;
+    const nextMedia = () => {
+      this.currentImg = (this.currentImg + 1) % this.mediaCount;
+      this.updateMediaView();
     }
-    const nextImg = () => {
-      if(currentImg + 1 > images.length - 1) return;
-
-      currentImg++;
-      updateCurrentImg();
-      updateTranslateValue();
+    const prevMedia = () => {
+      this.currentImg = (this.currentImg - 1 + this.mediaCount) % this.mediaCount;
+      this.updateMediaView();
     }
-    const prevImg = () => {
-      if(currentImg - 1 < 0) return;
-
-      currentImg--;
-      updateCurrentImg();
-      updateTranslateValue();
-    }
-    const scrollEvent = (e) => {
-      if(e.wheelDelta < 0)
-        nextImg();
-      else
-        prevImg();
-    }
-
-    const updateTranslateValue = (bool) => {
-      translateVal = imgWidth.reduce((prev, curr, i) => {
-        if(i <= currentImg){
-          return prev + curr + (i ? 3 : 0);
-        }
-        return prev;
-      }, 0) - (imgWidth[currentImg] / 2);
-      
-      ul.style.transform = `translateX(calc(50% - ${translateVal}px))`;
-
-      if(bool) return;
-      ul.style.transition = `transform 0.3s`;
-      setTimeout(() => {
-        ul.style.transition = ``;
-      }, 300);
-    }
+    const scrollEvent = (e) => { e.wheelDelta < 0 ? nextMedia() : prevMedia(); }
 
     list.addEventListener('click', (e) => {
-      const img = e.target.closest('img[data-main-img]');
-
-      if(!img) return;
-      currentImg = Array.from(images).indexOf(img);
-
+      const mediaLi = e.target.closest('li[data-path]');
+      if(!mediaLi) return;
+      this.currentImg = Array.from(mediaItems).indexOf(mediaLi);
       article.style.display = 'flex';
-      
-      if(!imgWidth.length)
-      for(let i = 0; i < ul.children.length; i++)
-        imgWidth.push(ul.children[i].getBoundingClientRect().width);
-      
-      updateCurrentImg();
-      updateTranslateValue(true);
+      this.updateMediaView();
     });
     article.addEventListener('click', (e) => {
-      if(e.target.tagName === 'ARTICLE')
-        article.style.display = 'none';
+      // Close only if the click is on the background, not the exit button or other elements
+      if(e.target === article) article.style.display = 'none';
     });
     ul.addEventListener('click', (e) => {
       const li = e.target.closest('li');
-
       if(!li) return;
-
-      currentImg = Array.from(ul.children).indexOf(li);
-      updateCurrentImg();
-      updateTranslateValue();
+      this.currentImg = Array.from(ul.children).indexOf(li);
+      this.updateMediaView();
     });
-
     article.addEventListener('wheel', scrollEvent);
-    if(imgs > 1){
-      arrowNext.addEventListener('click', nextImg);
-      arrowBack.addEventListener('click', prevImg);
+    if(this.mediaCount > 1){
+      this.arrowNext.addEventListener('click', nextMedia);
+      this.arrowBack.addEventListener('click', prevMedia);
     }
+    // --- ADDED START ---
+    // Add click listener for the exit button
+    if (this.exitBtn) {
+        this.exitBtn.addEventListener('click', () => {
+            article.style.display = 'none';
+        });
+    }
+    // --- ADDED END ---
   }
 }

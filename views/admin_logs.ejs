@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Logs</title>
+    <link rel="stylesheet" href="/stylesheets/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <%- include('templates/admin_sidebar', { page: page }) %>
+
+        <main class="admin-content">
+            <h1>Admin Activity Logs</h1>
+
+            <div class="logs-table-container">
+                <table>
+    <thead>
+        <tr>
+            <th>Log ID</th>
+            <th>Admin ID</th>
+            <th>Action Details</th>
+            <th>Timestamp</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% if (logs && logs.length > 0) { %>
+            <% logs.forEach(log => { %>
+                <tr>
+                    <td><%= log.LogID %></td>
+                    <td><%= log.AdminID %></td>
+                    <td><%= log.Action %></td>
+                    <td><%= new Date(log.Timestamp).toLocaleString('en-US') %></td>
+                </tr>
+            <% }); %>
+        <% } else { %>
+            <tr>
+                <td colspan="4">No logs found.</td>
+            </tr>
+        <% } %>
+    </tbody>
+</table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

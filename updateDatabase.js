@@ -14,6 +14,18 @@ db.serialize(() => {
     }
   );
 
+  // Add the isArchived column
+  db.run(
+    `ALTER TABLE comments ADD COLUMN isArchived BOOLEAN DEFAULT 0;`,
+    (err) => {
+        if (err) {
+            console.error('Error adding isArchived column:', err.message);
+        } else {
+            console.log('isArchived column added successfully.');
+        }
+    }
+  );
+  
   // Verify the table schema
   db.all(`PRAGMA table_info(comments);`, (err, rows) => {
     if (err) {

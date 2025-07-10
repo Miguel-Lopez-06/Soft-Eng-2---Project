@@ -159,55 +159,86 @@ router.get('/Announcement/:id', function (req, res) {
       res.status(500).json({ success: false, message: 'Cannot load data' });
     });
 });
-router.get('/Announcement/:id/getComments', function (req, res) {
-  const { id } = req.params;
 
-  con.all(
-    'SELECT * FROM comments WHERE AnnouncementID = ? ORDER BY CommentDate DESC', // Ensure consistent ordering
-    [id],
-    function (err, rows) {
-      if (err) {
-        console.error('Cannot load data', err);
-        res.status(500).json({ success: false, message: 'Cannot load data' });
-      } else {
-        res.status(200).json({ success: true, message: 'Records successfully fetched!', data: rows });
-      }
-    }
-  );
+// In rIndex.js
+
+router.get('/Announcement/:id/getComments', function (req, res) {
+    const { id } = req.params;
+
+    // First, get all top-level comments (those without a parent)
+    const sqlParent = 'SELECT * FROM comments WHERE AnnouncementID = ? AND ParentCommentID IS NULL AND isArchived = 0 ORDER BY CommentDate DESC';
+
+    con.all(sqlParent, [id], function (err, parentComments) {
+        if (err) {
+            console.error('Error fetching parent comments:', err);
+            return res.status(500).json({ success: false, message: 'Server error.' });
+        }
+
+        // If there are no parent comments, return an empty array
+        if (parentComments.length === 0) {
+            return res.status(200).json({ success: true, data: [] });
+        }
+
+        // For each parent comment, create a promise to fetch its replies
+        const promises = parentComments.map(parent => {
+            return new Promise((resolve, reject) => {
+                const sqlReplies = 'SELECT * FROM comments WHERE ParentCommentID = ? AND isArchived = 0 ORDER BY CommentDate ASC';
+                con.all(sqlReplies, [parent.CommentID], (err, replies) => {
+                    if (err) return reject(err);
+                    
+                    // Attach the replies to the parent comment object
+                    parent.replies = replies || []; 
+                    resolve(parent);
+                });
+            });
+        });
+
+        // Once all reply queries are finished, send the complete nested data
+        Promise.all(promises)
+            .then(data => {
+                res.status(200).json({ success: true, data: data });
+            })
+            .catch(error => {
+                console.error('Error fetching replies:', error);
+                res.status(500).json({ success: false, message: 'Server error fetching replies.' });
+            });
+    });
 });
+
 router.post('/Announcement/:id/addComment', function (req, res) {
   const { id } = req.params;
-  const { text } = req.body;
+  const { text, parentId = null } = req.body;
 
-  console.log('Received comment:', text); // Debugging: Log the received comment
+  // No AdminID is needed here, as per your application logic.
 
   if (!text || !text.trim()) {
     return res.status(400).json({ success: false, message: 'Comment text is required.' });
   }
 
-  // Filter profanity
   const { censoredText, containsProfanity } = filterProfanity(text);
-  console.log('Censored comment:', censoredText); // Debugging: Log the censored comment
+  const commentDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const status = containsProfanity ? 'flagged' : 'approved';
 
-  const commentDate = new Date().toISOString();
-  const status = containsProfanity ? 'flagged' : 'approved'; // Flag comment if profanity is detected
+  // The SQL query is now simpler and does NOT include AdminID.
+  const sql = 'INSERT INTO comments (AnnouncementID, Text, CommentDate, Status, ParentCommentID) VALUES (?, ?, ?, ?, ?)';
+  
+  // The params array is now shorter and matches the SQL query.
+  const params = [id, censoredText, commentDate, status, parentId];
 
-  con.run(
-    'INSERT INTO comments (AnnouncementID, Text, CommentDate, Status) VALUES (?, ?, ?, ?)',
-    [id, censoredText, commentDate, status],
-    function (err) {
-      if (err) {
-        console.error('Error adding comment:', err);
-        return res.status(500).json({ success: false, message: 'Sorry, your comment contains profanity.' });
-      }
-      res.status(200).json({
-        success: true,
-        message: containsProfanity
-          ? 'Comment added but flagged for profanity.'
-          : 'Comment added successfully!',
-      });
+  con.run(sql, params, function (err) {
+    if (err) {
+      // If the error still happens, this line is the most important for debugging.
+      console.error('DATABASE ERROR while adding comment:', err);
+      return res.status(500).json({ success: false, message: 'Could not post comment due to a server error.' });
     }
-  );
+    
+    res.status(201).json({
+      success: true,
+      message: containsProfanity
+        ? 'Comment added but held for review.'
+        : 'Comment added successfully!',
+    });
+  });
 });
 
 // CONTACTS
