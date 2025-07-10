@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 var con = require('../config/db');
 var multer = require('multer');
-var path = 'path';
+var path = require('path');
 
 // --- Multer Configuration ---
 const storage = multer.diskStorage({
@@ -153,33 +153,70 @@ router.post('/anncAdd', logAdminAction, upload.fields([{ name: 'mainImg', maxCou
     });
 });
 
-router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), (req, res) => {
-  if (!req.session.AdminID) return res.status(401).json({ success: false, message: 'Session expired' });
+router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), async (req, res) => {
+  if (!req.session.AdminID) {
+    return res.status(401).json({ success: false, message: 'Session expired' });
+  }
 
   const { id, title, description, existingMainImg } = req.body;
-  // FIX: Parse the existingGalleryImgs array from the FormData
-  const existingGalleryImgs = JSON.parse(req.body.existingGalleryImgs || '[]');
 
-  const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : existingMainImg;
-  const newGalleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(f => '/images/announcements/' + f.filename) : [];
-  const galleryImgPaths = [...newGalleryImgPaths, ...existingGalleryImgs.map(img => `../images/announcements/${img}`)];
-
-  con.serialize(() => {
-    con.run('UPDATE announcement SET AdminID = ?, Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?', 
-      [req.session.AdminID, title, description, mainImgPath, id]);
-
-    con.run('DELETE FROM `gallery images` WHERE AnnouncementID = ?', id, (err) => {
-      if (err) return res.status(500).json({ success: false, message: 'Error clearing old gallery images' });
-
-      const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES (?, ?, ?)');
-      galleryImgPaths.forEach((path, i) => galStmt.run(id, i, path));
-      galStmt.finalize((err) => {
-        if (err) return res.status(500).json({ success: false, message: 'Error updating gallery images' });
-        res.status(200).json({ success: true, message: 'Announcement updated' });
+  // Helper function to promisify database calls
+  const runQuery = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      con.run(sql, params, function(err) {
+        if (err) return reject(err);
+        resolve(this);
       });
     });
-  });
+  };
+
+  try {
+    // 1. Prepare file paths
+    let existingImgs = [];
+    if (req.body.existingGalleryImgs) {
+      existingImgs = Array.isArray(req.body.existingGalleryImgs) ? req.body.existingGalleryImgs : [req.body.existingGalleryImgs];
+    }
+
+    const newMainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : null;
+    const newGalleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(f => '/images/announcements/' + f.filename) : [];
+    
+    const finalMainImgPath = newMainImgPath || existingMainImg;
+    const allGalleryPaths = [...newGalleryImgPaths, ...existingImgs];
+
+    // 2. Start database transaction
+    await runQuery('BEGIN TRANSACTION;');
+
+    // 3. Update the main announcement details
+    await runQuery(
+      'UPDATE announcement SET Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?',
+      [title, description, finalMainImgPath, id]
+    );
+
+    // 4. Delete all old gallery images for this announcement
+    await runQuery('DELETE FROM `gallery images` WHERE AnnouncementID = ?', [id]);
+
+    // 5. Insert all current gallery images (new and existing)
+    if (allGalleryPaths.length > 0) {
+      const insertStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES (?, ?, ?)');
+      for (let i = 0; i < allGalleryPaths.length; i++) {
+        await runQuery.call(insertStmt, allGalleryPaths[i], [id, i, allGalleryPaths[i]]);
+      }
+      insertStmt.finalize();
+    }
+
+    // 6. Commit transaction
+    await runQuery('COMMIT;');
+
+    res.status(200).json({ success: true, message: 'Announcement updated successfully' });
+
+  } catch (err) {
+    // If any step fails, roll back the transaction
+    await runQuery('ROLLBACK;');
+    console.error("Transaction failed:", err.message);
+    res.status(500).json({ success: false, message: 'An internal server error occurred. The update was not saved.' });
+  }
 });
+
 
 router.post('/anncDelete', logAdminAction, function(req, res){
   if (!req.session.AdminID) {

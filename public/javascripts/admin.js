@@ -363,6 +363,8 @@ function createMediaElement(path) {
         img.loading = 'lazy';
         return img;
     }
+    media.dataset.mainImg = ""; 
+    return media;
 }
 
 function loadAnnouncements(data){
