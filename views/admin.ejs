@@ -16,12 +16,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=Libre+Franklin:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
   <nav>
     <ul class="navLinks">
       <li>
-        <a data-nav-tabs="Announcements" class="selected">
+        <a data-nav-tabs="Announcements">
           <img src="/images/svg/megaphone.svg" alt="anncSVG" title="announcements">
           <p>Announcements</p>
         </a>
@@ -33,7 +35,7 @@
         </a>
       </li>
       <li>
-        <a data-nav-tabs="Logs">
+        <a data-nav-tabs="Logs" class="selected">
           <img src="/images/svg/logs.svg" alt="logs">
           <p>Logs</p>
         </a>
@@ -49,7 +51,7 @@
       <form id="announcementForm" enctype="multipart/form-data">
         <div class="top">
           <input type="hidden">
-          <input type="file" name="ancMainImg" id="ancMainImg" accept="image/*" hidden>
+          <input type="file" name="ancGalleryImg" id="ancGalleryImg" accept="image/*,video/*" multiple="multiple" hidden>
           <div>
             <label for="ancMainImg">
               <div class="mainImgCont">
@@ -68,7 +70,7 @@
         </div>
         <div class="mid">
           <h1>Gallery</h1>
-          <input type="file" name="ancGalleryImg" id="ancGalleryImg" accept="image/*" multiple="multiple" hidden>
+          <input type="file" name="ancGalleryImg" id="ancGalleryImg" accept="image/*,video/*" multiple="multiple" hidden>
           <ul class="galleryImages">
             <li class="addImg">
               <label for="ancGalleryImg">
@@ -123,7 +125,7 @@
     <article></article>
   </div>
   <main>
-    <article data-nav-windows="Announcements" class="show">
+    <article data-nav-windows="Announcements">
       <button class="addAnnc" onclick="openModal('anncModal', 'Add')">Post new Announcement</button>
       <h1>Posted Announcements</h1>
       <ul class="anncPreview"></ul>
@@ -142,8 +144,18 @@
       <ul class="councilPreview"></ul>
     </article>
 
-    <article data-nav-windows="Logs">
-        <h1>Admin Activity Logs</h1>
+    <article data-nav-windows="Logs" class="show">
+        <div class="logs-header">
+            <h1>Admin Activity Logs</h1>
+            <button id="export-logs-btn">Export to Excel</button>
+        </div>
+    
+        <h2>Activity Analytics</h2>
+        <div class="analytics-container">
+            <p>Loading analytics...</p>
+        </div>
+    
+        <h2>Log Details</h2>
         <div class="logs-table-container">
             <table>
                 <thead>
@@ -155,7 +167,8 @@
                     </tr>
                 </thead>
                 <tbody class="logs-tbody">
-                    </tbody>
+                    <tr><td colspan="4">Loading logs...</td></tr>
+                </tbody>
             </table>
         </div>
     </article>
@@ -165,4 +178,4 @@
   <script src="/javascripts/modals.js"></script>
   <script src="/javascripts/admin.js"></script>
 </body>
-</html>
+</html>                       

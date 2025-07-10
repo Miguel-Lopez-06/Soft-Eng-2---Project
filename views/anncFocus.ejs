@@ -35,8 +35,8 @@
           <span id="datePosted"><%= formattedDate %></span>
         </div>
         <div class="body">
-          <img id="mainImg" src="<%= Image %>" alt="main image">
-          <p id="description"><%= Description %></p>
+          <div id="main-media-container"></div>
+          <p id="description"><%- Description.replace(/\r\n/g, '<br>') %></p>
         </div>
         <div class="gallery">
           <h1>Gallery</h1>
@@ -44,9 +44,7 @@
             <% galImages.forEach(img => { %>
               <% const { ImagePath } = img; %>
               <% if(ImagePath !== null){ %>
-                <li>
-                  <img src="<%= ImagePath %>" alt="gallery image" data-main-img>
-                </li>
+                <li data-path="<%= ImagePath %>" data-main-img></li>
               <% } %>
             <% }); %>
           </ul>
@@ -54,14 +52,12 @@
         <div class="bottom">
           <%
             let commentCount = 0;
-        
             for (comment of comments) {
               if (comment.AnnouncementID === AnnouncementID && comment.Status === 'approved') {
                 commentCount++;
               }
             }
           %>
-          <!-- Approved Comments Section -->
           <h2><%= commentCount %> Comment<%= commentCount !== 1 ? 's' : '' %></h2>
           <hr>
           <form id="commentForm">
@@ -72,61 +68,65 @@
             </div>
           </form>
           <ul class="commentList">
-            <% comments.forEach(comment => { %>
-              <% if (comment.Status === 'approved') { %>
-                <li>
-                  <img src="../images/svg/circle-user.svg" alt="user" class="user-placeholder">
-                  <div class="txt">
-                    <span><%= new Date(comment.CommentDate).toLocaleString() %></span>
-                    <p><%= comment.Text %></p>
-                  </div>
-                </li>
-              <% } %>
-            <% }); %>
-          </ul>
+             </ul>
         
-          <!-- Flagged Comments Section -->
-          <br />
-          <button id="toggle-flagged-comments">Show Flagged Comments</button>
-          <div id="flagged-comments-container" style="display: none;">
-            <br />
-            <h3>Flagged Comments</h3>
-            <br />
-            <ul class="flaggedList">
-              <% comments.forEach(comment => { %>
-                <% if (comment.Status === 'flagged') { %>
-                  <li>
-                    <img src="../images/svg/circle-user.svg" alt="user" class="user-placeholder">
-                    <div class="txt">
-                      <span><%= new Date(comment.CommentDate).toLocaleString() %></span>
-                      <p><%= comment.Text %></p>
-                    </div>
-                  </li>
-                <% } %>
-              <% }); %>
-            </ul>
           </div>
-        
-          <script>
-            // Toggle visibility of flagged comments
-            document.getElementById('toggle-flagged-comments').addEventListener('click', function () {
-              const container = document.getElementById('flagged-comments-container');
-              if (container.style.display === 'none') {
-                container.style.display = 'block';
-                this.textContent = 'Hide Flagged Comments';
-              } else {
-                container.style.display = 'none';
-                this.textContent = 'Show Flagged Comments';
-              }
-            });
-          </script>
-        </div>
       </div>
     </section>
     <footer>
       <%- include('templates/footer') %>
     </footer>
   </main>
+
+  <script>
+    // Helper function to create the correct HTML tag (img or video)
+    function createMediaElement(path, isMain = false) {
+      if (!path) return document.createElement('div');
+      
+      const isVideo = path.toLowerCase().endsWith('.mp4') || path.toLowerCase().endsWith('.webm') || path.toLowerCase().endsWith('.ogg');
+      let mediaElement;
+
+      if (isVideo) {
+        mediaElement = document.createElement('video');
+        mediaElement.src = path;
+        // The main video gets controls; gallery videos are muted and autoplay for preview.
+        mediaElement.controls = isMain;
+        mediaElement.muted = !isMain;
+        mediaElement.autoplay = !isMain;
+        mediaElement.loop = !isMain;
+        mediaElement.playsInline = true;
+      } else {
+        mediaElement = document.createElement('img');
+        mediaElement.src = path;
+        mediaElement.loading = 'lazy';
+      }
+
+      if (isMain) mediaElement.id = 'mainImg';
+      
+      return mediaElement;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Create and append the main announcement media
+      const mainMediaContainer = document.getElementById('main-media-container');
+      const mainMediaElement = createMediaElement('<%= Image %>', true);
+      mainMediaContainer.appendChild(mainMediaElement);
+
+      // Create and append the gallery media
+      document.querySelectorAll('.galleryImgs li').forEach(li => {
+        const path = li.dataset.path;
+        const galleryMediaElement = createMediaElement(path, false);
+        li.appendChild(galleryMediaElement);
+      });
+      
+      // Initialize the image/video viewer for the gallery
+      const galleryContainer = document.querySelector('.galleryImgs');
+      if (galleryContainer && typeof imageViewer !== 'undefined') {
+        new imageViewer(galleryContainer);
+      }
+    });
+  </script>
+
   <script src="../javascripts/imgViewer.js"></script>
   <script src="../javascripts/anncFocus.js"></script>
 </body>

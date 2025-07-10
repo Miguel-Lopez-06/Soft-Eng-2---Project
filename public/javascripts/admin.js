@@ -1,6 +1,5 @@
 const mainTabs = document.querySelectorAll('[data-nav-tabs]');
 const mainWindows = document.querySelectorAll('[data-nav-windows]');
-let logsLoaded = false; // Add this flag
 
 mainTabs.forEach((tab) => {
   tab.addEventListener('click', () => {
@@ -8,21 +7,16 @@ mainTabs.forEach((tab) => {
       if (tab.dataset.navTabs === window.dataset.navWindows) {
         mainTabs[i].classList.add('selected');
         window.classList.add('show');
-      } else {
+      }
+      else{
         mainTabs[i].classList.remove('selected');
         window.classList.remove('show');
       }
     });
-
-    // When the "Logs" tab is clicked, fetch the data from the API
-    if (tab.dataset.navTabs === 'Logs' && !logsLoaded) {
-      loadAdminLogs();
-      logsLoaded = true;
-    }
   });
 });
 
-const anncForm = document.querySelector('#announcementForm');
+const anncForm = document.querySelector('#ann1ncementForm');
 const anncUpdateId = anncForm.querySelector('[type=hidden]');
 const anncMainImg = anncForm.querySelector('#ancMainImg');
 const anncLabel = anncForm.querySelector('label[for="ancMainImg"]');
@@ -35,129 +29,122 @@ const galImg = anncForm.querySelector('.galleryImages');
 const anncError = anncForm.querySelector('.errorMsg');
 let formType;
 
-
-// --- Helper function to create gallery item previews and store the file data ---
-function createGalleryItem(file) {
-    const li = document.createElement('li');
-    // Store the actual file object with the list item. This is crucial.
-    li.fileData = file;
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.innerHTML = `<img src="../images/svg/xmark.svg" loading="lazy" alt="xmark">`;
-    li.appendChild(btn);
-
-    const mediaElement = createMediaElement(URL.createObjectURL(file));
-    mediaElement.classList.add('galImg');
-    li.appendChild(mediaElement);
-    
-    btn.addEventListener('click', () => {
-        galImg.removeChild(li);
-    });
-
-    return li;
-}
-
-
 anncGalImg.addEventListener('change', (e) => {
   const files = e.target.files;
   const addGalleryImg = galImg.querySelector('.addImg');
   
   for(const file of files){
-    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
-      const galleryItem = createGalleryItem(file);
-      addGalleryImg.before(galleryItem);
+    if(file && file.type.startsWith('image/')){
+      const li = document.createElement('li');
+      const img = document.createElement('img');
+      const btn = document.createElement('button');
+      
+      btn.type = 'button';
+      btn.innerHTML = `<img src="../images/svg/xmark.svg" loading="lazy" alt="xmark">`
+      img.classList.add('galImg');
+      img.src = URL.createObjectURL(file);
+      img.dataset.imgName = file.name;
+      li.appendChild(btn);
+      li.appendChild(img);
+      addGalleryImg.before(li);
+
+      btn.addEventListener('click', () => {
+        galImg.removeChild(li);
+      });
     }
   }
-   // Clear the input so the same files can be selected again if removed
-   e.target.value = null;
 });
-
 function clearAnncForm(){
-  galImg.innerHTML = `<li class="addImg"><label for="ancGalleryImg"><div>+</div></label></li>`;
+  galImg.innerHTML =
+    `<li class="addImg">
+      <label for="ancGalleryImg">
+        <div>+</div>
+      </label>
+    </li>`;
+
   anncForm.reset();
   mainImg.src = '';
   mainImg.style.display = 'none';
   anncLabel.classList.remove('hasImg');
   anncP.style.display = 'block';
-  anncMainImg.value = '';
-  anncGalImg.value = '';
 }
-
 anncForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  
+  const mImg = mainImg.dataset.imgName;
+  const galleryImgs = galImg.querySelectorAll('.galImg');
 
-  const mainImgFile = anncMainImg.files[0];
-
-  // --- Validation ---
-  if (!mainImgFile && formType === 'Add') {
-    anncError.innerText = '*No cover photo/video selected.';
+  if(!mImg){
+    anncError.innerText = '*No cover photo selected.';
     anncError.style.opacity = '1';
     return;
   }
-  
-  anncError.style.opacity = '0';
-
-  // --- Create FormData Object ---
-  const formData = new FormData();
-  formData.append('title', anncTitle.value);
-  formData.append('description', anncDesc.value);
-
-  // Append main image/video file ONLY if a new one is selected
-  if (mainImgFile) {
-    formData.append('mainImg', mainImgFile);
-  } else if (formType === 'Edit') {
-    // For edits, send the path of the existing file if no new one was chosen
-    formData.append('existingMainImg', mainImg.dataset.imgPath || '');
-  }
-  
-  // --- Determine URL and Fetch Logic ---
-  let url = '/admin/anncAdd';
-  if (formType === 'Edit') {
-    url = '/admin/anncUpdate';
-    formData.append('id', anncUpdateId.value);
-    
-    // Append a mix of new files and existing paths for the gallery
-    const galleryItems = galImg.querySelectorAll('li:not(.addImg)');
-    galleryItems.forEach(item => {
-        if (item.fileData) { // This is a NEW file
-            formData.append('galleryImgs', item.fileData);
-        } else if (item.dataset.imgPath) { // This is an EXISTING file
-            formData.append('existingGalleryImgs', item.dataset.imgPath);
-        }
-    });
-
-  } else { // This is for 'Add' mode
-    const galleryItems = galImg.querySelectorAll('li:not(.addImg)');
-    galleryItems.forEach(item => {
-        if(item.fileData) {
-            formData.append('galleryImgs', item.fileData);
-        }
-    });
-  }
-
-  fetch(url, {
-    method: 'POST',
-    body: formData, 
-  })
-  .then(response => response.json())
-  .then(res => {
-    if (res.success) {
-      clearAnncForm();
-      closeModal();
-      getData('annc').then(data => {
-        if (data && data.success) loadAnnouncements(data);
-      });
-    } else {
-      anncError.innerText = res.message || 'An error occurred during submission.';
-      anncError.style.opacity = '1';
-    }
-  })
-  .catch(error => {
-    console.error("Error submitting form:", error);
-    anncError.innerText = 'A network error occurred. Please try again.';
+  if(galleryImgs.length > 20){
+    anncError.innerText = '*Maximum gallery images is 20.';
     anncError.style.opacity = '1';
-  });
+    return;
+  }
+  anncError.style.opacity = '0';
+  
+  const data = {
+    title: anncTitle.value,
+    description: anncDesc.value,
+    mainImg: `../images/announcements/${mImg}`,
+    galleryImgs: [],
+  };
+
+  for(const img of galleryImgs){
+    data.galleryImgs.push(`../images/announcements/${img.dataset.imgName}`);
+  }
+  
+  if(formType === 'Add'){
+    fetch('/admin/anncAdd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(res => {
+      if(res.success){
+        clearAnncForm();
+        closeModal();
+        getData('annc')
+        .then(data => {
+          if(data.success){
+            loadAnnouncements(data);
+          }
+        })
+        .catch(error => {
+          console.error("Error loading data:", error);
+        });
+      }
+    });
+  }
+  if(formType === 'Edit'){
+    data.id = anncUpdateId.value;
+
+    fetch('/admin/anncUpdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(res => {
+      if(res.success){
+        clearAnncForm();
+        closeModal();
+        getData('annc')
+        .then(data => {
+          if(data.success){
+            loadAnnouncements(data);
+          }
+        })
+        .catch(error => {
+          console.error("Error loading data:", error);
+        });
+      }
+    });
+  }
 });
 
 const conlForm = document.querySelector('#councilForm');
@@ -172,27 +159,28 @@ const conlLName = conlForm.querySelector('#lastName');
 const conlPosition = conlForm.querySelector('#position');
 const conlError = conlForm.querySelector('.errorMsg');
 
-// --- Corrected imageChange function ---
-function imageChange(inputElement, previewElement, labelElement, paragraphElement){
+function imageChange(inputElement, imageElement, labelElement, paragraphElement, path){
   inputElement.addEventListener('change', (e) => {
     const file = e.target.files[0];
 
-    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
-      // Use createObjectURL for local preview
-      previewElement.src = URL.createObjectURL(file);
-      previewElement.style.display = 'block';
+    if(file && file.type.startsWith('image/')){
+      imageElement.src = `${path}${file.name}`;
+      imageElement.style.display = 'block';
+      imageElement.dataset.imgName = file.name;
       labelElement.classList.add('hasImg');
       paragraphElement.style.display = 'none';
-    } else {
-      previewElement.src = '';
-      previewElement.style.display = 'none';
+    }
+    else{
+      imageElement.src = '';
+      imageElement.style.display = 'none';
+      imageElement.dataset.imgName = '';
       labelElement.classList.remove('hasImg');
       paragraphElement.style.display = 'block';
     }
   });
 }
-imageChange(anncMainImg, mainImg, anncLabel, anncP);
-imageChange(conlMemberImg, memberImg, memberLabel, conlP);
+imageChange(anncMainImg, mainImg, anncLabel, anncP, '../images/announcements/');
+imageChange(conlMemberImg, memberImg, memberLabel, conlP, '../images/council members/');
 
 function clearConlForm(){
   conlForm.reset();
@@ -201,17 +189,18 @@ function clearConlForm(){
   memberLabel.classList.remove('hasImg');
   conlP.style.display = 'block';
 }
-
-// councilForm submit logic remains the same as it doesn't handle file uploads
 conlForm.addEventListener('submit', (e) => {
   e.preventDefault();
+
   const image = memberImg.dataset.imgName;
+
   if(!image){
     conlError.innerText = '*No cover photo selected.';
     conlError.style.opacity = '1';
     return;
   }
   conlError.style.opacity = '0';
+
   const data = {
     image: `../images/council members/${image}`,
     firstName: conlFName.value,
@@ -219,12 +208,9 @@ conlForm.addEventListener('submit', (e) => {
     lastName: conlLName.value,
     position: conlPosition.value,
   };
-  let url = '/admin/councilAdd';
-  if(formType === 'Edit'){
-    url = '/admin/councilUpdate';
-    data.id = conlUpdateId.value;
-  }
-    fetch(url, {
+
+  if(formType === 'Add'){
+    fetch('/admin/councilAdd', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -232,42 +218,51 @@ conlForm.addEventListener('submit', (e) => {
     .then(response => response.json())
     .then(res => {
       if(res.success){
-        clearConlForm();
+        clearAnncForm();
         closeModal();
-        getData('council').then(data => {
-          if(data && data.success) loadCouncil(data);
+        getData('council')
+        .then(data => {
+          if(data.success){
+            loadCouncil(data);
+          }
+        })
+        .catch(error => {
+          console.error("Error loading data:", error);
         });
       }
     });
-});
+  }
+  if(formType === 'Edit'){
+    data.id = conlUpdateId.value;
 
+    fetch('/admin/councilUpdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(res => {
+      if(res.success){
+        clearAnncForm();
+        closeModal();
+        getData('council')
+        .then(data => {
+          if(data.success){
+            loadCouncil(data);
+          }
+        })
+        .catch(error => {
+          console.error("Error loading data:", error);
+        });
+      }
+    });
+  }
+});
 
 const modalList = document.querySelector('.course-modal');
 const modals = modalList.querySelectorAll('article');
 const anncList = document.querySelector('.anncPreview');
 const councilList = document.querySelector('.councilPreview');
-
-// --- Helper function to create <img /> or <video /> elements ---
-function createMediaElement(path) {
-    if (!path) return document.createElement('div'); // Return empty div if path is null
-    const isVideo = path.endsWith('.mp4') || path.endsWith('.webm') || path.endsWith('.ogg');
-    
-    if (isVideo) {
-        const video = document.createElement('video');
-        video.src = path;
-        video.controls = false;
-        video.muted = true;
-        video.autoplay = true;
-        video.loop = true;
-        video.playsInline = true;
-        return video;
-    } else {
-        const img = document.createElement('img');
-        img.src = path;
-        img.loading = 'lazy';
-        return img;
-    }
-}
 
 function loadAnnouncements(data){
   const { announcements, galImages } = data;
@@ -283,7 +278,7 @@ function loadAnnouncements(data){
     const ancGallery = document.createElement('div');
     const txt = document.createElement('div');
     const icon = document.createElement('div');
-    const mainMediaTag = createMediaElement(Image);
+    const mainImgTag = document.createElement('img');
     const edit = document.createElementNS('http://www.w3.org/2000/svg', "svg");
     const del = document.createElementNS('http://www.w3.org/2000/svg', "svg");
     const setDate = new Date(DatePosted);
@@ -299,14 +294,16 @@ function loadAnnouncements(data){
     
     txt.classList.add('txt');
     ancMain.classList.add('ancMain');
-    mainMediaTag.classList.add('mainImg');
+    mainImgTag.classList.add('mainImg');
     ancGallery.classList.add('ancGallery');
     icon.classList.add('icon');
-    
+    edit.classList.add('edit');
+    del.classList.add('delete');
+
     li.appendChild(ancMain);
     li.appendChild(ancGallery);
     li.appendChild(icon);
-    ancMain.appendChild(mainMediaTag);
+    ancMain.appendChild(mainImgTag);
     ancMain.appendChild(txt);
     txt.appendChild(h2);
     txt.appendChild(span);
@@ -315,16 +312,29 @@ function loadAnnouncements(data){
     icon.appendChild(del);
     anncList.appendChild(li);
 
-    mainMediaTag.dataset.mainImg = "";
+    Object.assign(mainImgTag, {
+      src: Image,
+      loading: 'lazy',
+      alt: 'main image',
+    })
+    mainImgTag.dataset.mainImg = "";
+    
     h2.innerText = Title;
     span.innerText = formattedDate;
     p.innerText = Description;
     
     for(const img of galImages){
       if(img.AnnouncementID === AnnouncementID && img.ImagePath !== null){
-        const galMediaTag = createMediaElement(img.ImagePath);
-        galMediaTag.dataset.mainImg = "";
-        ancGallery.appendChild(galMediaTag);
+        const galImgTag = document.createElement('img');
+
+        Object.assign(galImgTag, {
+          src: img.ImagePath,
+          loading: 'lazy',
+          alt: 'gallery image',
+        })
+        galImgTag.dataset.mainImg = "";
+
+        ancGallery.appendChild(galImgTag);
       }
     }
     
@@ -332,45 +342,46 @@ function loadAnnouncements(data){
     new imageViewer(ancGallery);
 
     edit.setAttributeNS(null, 'viewBox', '0 0 512 512');
-    del.setAttributeNS(null, 'viewBox', '0 0 448 512');
+    edit.setAttributeNS(null, 'onclick', 'openModal("anncModal", "Edit")');
     edit.innerHTML = '<path d="M471.6 21.7c-21.9-21.9-57.3-21.9-79.2 0L362.3 51.7l97.9 97.9 30.1-30.1c21.9-21.9 21.9-57.3 0-79.2L471.6 21.7zm-299.2 220c-6.1 6.1-10.8 13.6-13.5 21.9l-29.6 88.8c-2.9 8.6-.6 18.1 5.8 24.6s15.9 8.7 24.6 5.8l88.8-29.6c8.2-2.7 15.7-7.4 21.9-13.5L437.7 172.3 339.7 74.3 172.4 241.7zM96 64C43 64 0 107 0 160V416c0 53 43 96 96 96H352c53 0 96-43 96-96V320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V160c0-17.7 14.3-32 32-32h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H96z"/>';
+    del.setAttributeNS(null, 'viewBox', '0 0 448 512');
     del.innerHTML = '<path d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/>';
-    
+
     edit.addEventListener('click', () => {
-        openModal("anncModal", "Edit");
-        
-        // Reset form for editing
-        clearAnncForm();
+      const addGalleryImg = galImg.querySelector('.addImg');
+      const mainImgName = mainImgTag.src.split("/");
 
-        anncUpdateId.value = AnnouncementID;
-        anncTitle.value = Title;
-        anncDesc.value = Description;
-        
-        mainImg.src = mainMediaTag.src;
-        mainImg.style.display = 'block';
-        mainImg.dataset.imgPath = Image; // Store the server path
-        anncLabel.classList.add('hasImg');
-        anncP.style.display = 'none';
+      anncUpdateId.value = AnnouncementID;
+      anncTitle.value = h2.innerText;
+      anncDesc.value = p.innerText;
+      mainImg.src = mainImgTag.src;
+      mainImg.style.display = 'block';
+      mainImg.dataset.imgName = mainImgName[mainImgName.length - 1];
+      anncLabel.classList.add('hasImg');
+      anncP.style.display = 'none';
 
-        // Repopulate gallery for editing
-        const addGalleryImg = galImg.querySelector('.addImg');
-        for (const imgData of galImages) {
-            if (imgData.AnnouncementID === AnnouncementID && imgData.ImagePath) {
-                const galLi = document.createElement('li');
-                galLi.dataset.imgPath = imgData.ImagePath; // Store server path
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.innerHTML = `<img src="../images/svg/xmark.svg" loading="lazy" alt="xmark">`;
-                const mediaEl = createMediaElement(imgData.ImagePath);
-                mediaEl.classList.add('galImg');
-                galLi.appendChild(btn);
-                galLi.appendChild(mediaEl);
-                addGalleryImg.before(galLi);
-                btn.addEventListener('click', () => galImg.removeChild(galLi));
-            }
-        }
+      for(const imgInLi of ancGallery.children){
+        const galLi = document.createElement('li');
+        const img = document.createElement('img');
+        const galBtn = document.createElement('button');
+        
+        galBtn.type = 'button';
+        galBtn.innerHTML = `<img src="../images/svg/xmark.svg" loading="lazy" alt="xmark">`
+        img.classList.add('galImg');
+        img.src = imgInLi.src;
+
+        const galImgName = img.src.split("/");
+        img.dataset.imgName = galImgName[galImgName.length - 1];
+
+        galLi.appendChild(galBtn);
+        galLi.appendChild(img);
+        addGalleryImg.before(galLi);
+
+        galBtn.addEventListener('click', () => {
+          galImg.removeChild(galLi);
+        });
+      }
     });
-
     del.addEventListener('click', () =>{
       modalPN().confirm({
         title: 'Delete Announcement',
@@ -397,7 +408,6 @@ function loadAnnouncements(data){
     });
   }
 }
-
 function loadCouncil(data){
   const { councilMembers } = data;
   councilList.innerHTML = '';
@@ -493,7 +503,7 @@ async function getData(name){
 window.onload = () => {
   getData('annc')
   .then(data => {
-    if(data && data.success){
+    if(data.success){
       loadAnnouncements(data);
     }
   })
@@ -503,7 +513,7 @@ window.onload = () => {
   
   getData('council')
   .then(data => {
-    if(data && data.success){
+    if(data.success){
       loadCouncil(data);
     }
   })
@@ -519,9 +529,6 @@ function openModal(className, type){
   formType = type;
   if(className === 'anncModal'){
     modalH1.innerText = `${type} Announcement`;
-    if (type === 'Add') {
-        clearAnncForm();
-    }
   }
   if(className === 'conlModal'){
     modalH1.innerText = `${type} Council Member`;
@@ -612,83 +619,3 @@ function deleteComment(commentId) {
     })
     .catch(error => console.error('Error deleting comment:', error));
 }
-
-
-/**
- * Processes log data to calculate analytics and displays them.
- */
-function displayLogAnalytics(logs) {
-    const analyticsContainer = document.querySelector('.analytics-container');
-    if (!analyticsContainer) return;
-
-    const analytics = {};
-    logs.forEach(log => {
-        if (!analytics[log.AdminID]) {
-            analytics[log.AdminID] = { total: 0, actions: {} };
-        }
-        analytics[log.AdminID].total++;
-        const actionType = log.Action.split(' ')[0].replace(':', '');
-        analytics[log.AdminID].actions[actionType] = (analytics[log.AdminID].actions[actionType] || 0) + 1;
-    });
-
-    let analyticsHTML = '';
-    for (const adminId in analytics) {
-        const data = analytics[adminId];
-        let actionsHTML = '';
-        for (const action in data.actions) {
-            actionsHTML += `<li>${action}: <strong>${data.actions[action]}</strong></li>`;
-        }
-        analyticsHTML += `
-            <div class="analytics-card">
-                <h3>Admin ID: ${adminId}</h3>
-                <p>Total Actions: <strong>${data.total}</strong></p>
-                <ul>${actionsHTML}</ul>
-            </div>
-        `;
-    }
-    analyticsContainer.innerHTML = analyticsHTML || '<p>No activity to analyze.</p>';
-}
-
-/**
- * Renders the fetched log data into the main table.
- */
-function displayLogTable(logs) {
-    const tbody = document.querySelector('.logs-tbody');
-    if (!tbody) return;
-
-    if (logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4">No logs found.</td></tr>';
-        return;
-    }
-    const rowsHTML = logs.map(log => `
-        <tr>
-            <td>${log.LogID}</td>
-            <td>${log.AdminID}</td>
-            <td>${log.Action}</td>
-            <td>${new Date(log.Timestamp).toLocaleString('en-US')}</td>
-        </tr>
-    `).join('');
-    tbody.innerHTML = rowsHTML;
-}
-
-/**
- * Exports the currently stored log data to an Excel file.
- */
-function exportLogsToSheet() {
-    if (currentLogs.length === 0) {
-        alert('No log data to export.');
-        return;
-    }
-    const worksheet = XLSX.utils.json_to_sheet(currentLogs);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "AdminLogs");
-    XLSX.writeFile(workbook, "AdminActivityLogs.xlsx");
-}
-
-// Attach event listener to the export button after the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    const exportBtn = document.getElementById('export-logs-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportLogsToSheet);
-    }
-});

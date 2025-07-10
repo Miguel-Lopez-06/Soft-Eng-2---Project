@@ -17,6 +17,7 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
+        // This check now includes video mimetypes
         if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
             cb(null, true);
         } else {
@@ -132,108 +133,50 @@ router.get('/anncGet', function (req, res) {
     });
 });
 
-router.post('/anncAdd', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), function(req, res){
-  if (!req.session.AdminID) {
-    return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
-  }
+router.post('/anncAdd', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), (req, res) => {
+  if (!req.session.AdminID) return res.status(401).json({ success: false, message: 'Session expired' });
 
   const { title, description } = req.body;
   const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : null;
-  const galleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(file => '/images/announcements/' + file.filename) : [];
+  const galleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(f => '/images/announcements/' + f.filename) : [];
 
-  con.serialize(() => {
-    con.run("BEGIN TRANSACTION;");
+  con.run('INSERT INTO announcement (AdminID, Title, Description, Image, DatePosted) VALUES (?, ?, ?, ?, ?)', 
+    [req.session.AdminID, title, description, mainImgPath, new Date().toISOString()], function (err) {
+      if (err) return res.status(500).json({ success: false, message: 'Error inserting announcement' });
 
-    const stmt = con.prepare('INSERT INTO announcement (AdminID, Title, Description, Image, DatePosted) VALUES(?, ?, ?, ?, ?)');
-    stmt.run(req.session.AdminID, title, description, mainImgPath, new Date().toISOString(), function (err){
-      if(err){
-        console.error('Error inserting announcement', err);
-        con.run("ROLLBACK;");
-        return res.status(500).json({ success: false, message: 'Error inserting announcement' });
-      }
-      
-      const announcementId = this.lastID;
-      const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES(?, ?, ?)');
-      galleryImgPaths.forEach((path, i) => {
-        galStmt.run(announcementId, i, path);
-      });
+      const anncID = this.lastID;
+      const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES (?, ?, ?)');
+      galleryImgPaths.forEach((path, i) => galStmt.run(anncID, i, path));
+      galStmt.finalize();
 
-      galStmt.finalize((err) => {
-        if (err) {
-            console.error('Error finalizing gallery images', err);
-            con.run("ROLLBACK;");
-            return res.status(500).json({ success: false, message: 'Error saving gallery images' });
-        }
-        con.run("COMMIT;", (commitErr) => {
-            if (commitErr) {
-                console.error('Error committing transaction', commitErr);
-                con.run("ROLLBACK;");
-                return res.status(500).json({ success: false, message: 'Error finalizing transaction' });
-            }
-            res.status(200).json({ success: true, message: 'Records successfully added!' });
-        });
-      });
+      res.status(200).json({ success: true, message: 'Announcement added' });
     });
-    stmt.finalize();
-  });
 });
 
-router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), function(req, res){
-    if (!req.session.AdminID) {
-      return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
-    }
+router.post('/anncUpdate', logAdminAction, upload.fields([{ name: 'mainImg', maxCount: 1 }, { name: 'galleryImgs', maxCount: 20 }]), (req, res) => {
+  if (!req.session.AdminID) return res.status(401).json({ success: false, message: 'Session expired' });
 
-    const { id, title, description } = req.body;
-    const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : req.body.existingMainImg;
-    let galleryImgPaths = req.files.galleryImgs ? req.files.galleryImgs.map(file => '/images/announcements/' + file.filename) : [];
-    
-    // Combine new paths with existing paths from the form
-    if (req.body.existingGalleryImgs) {
-        // Ensure it's an array if only one is sent
-        const existing = Array.isArray(req.body.existingGalleryImgs) ? req.body.existingGalleryImgs : [req.body.existingGalleryImgs];
-        galleryImgPaths = galleryImgPaths.concat(existing);
-    }
-  
-    con.serialize(() => {
-      con.run("BEGIN TRANSACTION;");
-  
-      con.run('UPDATE announcement SET AdminID = ?, Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?', [req.session.AdminID, title, description, mainImgPath, id], (err) => {
-        if(err){
-          console.error('Error updating announcement', err);
-          con.run("ROLLBACK;");
-          return res.status(500).json({ success: false, message: 'Error updating announcement' });
-        }
-      });
-    
-      con.run('DELETE FROM `gallery images` WHERE AnnouncementID = ?', id, (err) => {
-        if(err){
-            console.error('Error deleting gallery images', err);
-            con.run("ROLLBACK;");
-            return res.status(500).json({ success: false, message: 'Error clearing old gallery images' });
-        }
-        
-        const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES(?, ?, ?)');
-        galleryImgPaths.forEach((path, i) => {
-            galStmt.run(id, i, path);
-        });
-  
-        galStmt.finalize((err) => {
-          if(err) {
-              console.error('Error finalizing gallery images update', err);
-              con.run("ROLLBACK;");
-              return res.status(500).json({ success: false, message: 'Error saving new gallery images' });
-          }
-          con.run("COMMIT;", (commitErr) => {
-            if (commitErr) {
-                console.error('Error committing transaction', commitErr);
-                con.run("ROLLBACK;");
-                return res.status(500).json({ success: false, message: 'Error finalizing transaction' });
-            }
-            res.status(200).json({ success: true, message: 'Records successfully updated!' });
-          });
-        });
-      });
+  const { id, title, description, existingMainImg, existingGalleryImgs } = req.body;
+  const mainImgPath = req.files.mainImg ? '/images/announcements/' + req.files.mainImg[0].filename : existingMainImg;
+  const galleryImgPaths = [
+    ...(req.files.galleryImgs ? req.files.galleryImgs.map(f => '/images/announcements/' + f.filename) : []),
+    ...(Array.isArray(existingGalleryImgs) ? existingGalleryImgs : existingGalleryImgs ? [existingGalleryImgs] : [])
+  ];
+
+  con.serialize(() => {
+    con.run('UPDATE announcement SET AdminID = ?, Title = ?, Description = ?, Image = ? WHERE AnnouncementID = ?', 
+      [req.session.AdminID, title, description, mainImgPath, id]);
+
+    con.run('DELETE FROM `gallery images` WHERE AnnouncementID = ?', id, (err) => {
+      if (err) return res.status(500).json({ success: false, message: 'Error clearing old gallery images' });
+
+      const galStmt = con.prepare('INSERT INTO `gallery images` (AnnouncementID, Pos, ImagePath) VALUES (?, ?, ?)');
+      galleryImgPaths.forEach((path, i) => galStmt.run(id, i, path));
+      galStmt.finalize();
+
+      res.status(200).json({ success: true, message: 'Announcement updated' });
     });
+  });
 });
 
 
@@ -277,10 +220,18 @@ router.get('/councilGet', function(req, res){
   });
 });
 
-router.post('/councilAdd', logAdminAction, function(req, res){
-  const { image, firstName, mInitial, lastName, position } = req.body;
+router.post('/councilAdd', logAdminAction, upload.single('image'), function(req, res){
+  const { firstName, mInitial, lastName, position } = req.body;
+  
+  // Get the file path from multer's req.file object
+  const imagePath = req.file ? '/images/council members/' + req.file.filename : null;
 
-  con.run('INSERT INTO `council members` (FirstName, MiddleInitial, LastName, Position, Image) VALUES(?, ?, ?, ?, ?)', [firstName, mInitial, lastName, position, image], (err) => {
+  if (!imagePath) {
+    return res.status(400).json({ success: false, message: 'Council member photo is required.' });
+  }
+
+  con.run('INSERT INTO `council members` (FirstName, MiddleInitial, LastName, Position, Image) VALUES(?, ?, ?, ?, ?)', 
+    [firstName, mInitial, lastName, position, imagePath], (err) => {
     if(err){
       console.error('Error inserting council member', err);
       return res.status(500).json({ success: false, message: 'Error inserting council member' });
@@ -289,10 +240,14 @@ router.post('/councilAdd', logAdminAction, function(req, res){
   });
 });
 
-router.post('/councilUpdate', logAdminAction, function(req, res){
-  const { id, image, firstName, mInitial, lastName, position } = req.body;
+router.post('/councilUpdate', logAdminAction, upload.single('image'), function(req, res){
+  const { id, firstName, mInitial, lastName, position } = req.body;
 
-  con.run('UPDATE `council members` SET FirstName = ?, MiddleInitial = ?, LastName = ?, Position = ?, Image = ? WHERE CouncilID = ?', [firstName, mInitial, lastName, position, image, id], (err) => {
+  // If a new file is uploaded, use its path. Otherwise, keep the existing path.
+  const imagePath = req.file ? '/images/council members/' + req.file.filename : req.body.existingImage;
+
+  con.run('UPDATE `council members` SET FirstName = ?, MiddleInitial = ?, LastName = ?, Position = ?, Image = ? WHERE CouncilID = ?', 
+    [firstName, mInitial, lastName, position, imagePath, id], (err) => {
     if(err){
       console.error('Error updating council member', err);
       return res.status(500).json({ success: false, message: 'Error updating council member' });
@@ -348,11 +303,12 @@ router.post('/deleteComment', logAdminAction, (req, res) => {
 
 router.get('/logs', function(req, res) {
     // Security check to ensure an admin is logged in
-    if (!req.session.adminId) {
+    // FIX: Changed from req.session.adminId to req.session.AdminID
+    if (!req.session.AdminID) {
         return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
-    const sql = "SELECT * FROM admin_logs ORDER BY Timestamp DESC";
+    const sql = "SELECT LogID, AdminID, Action, Timestamp FROM admin_logs ORDER BY Timestamp DESC";
 
     con.all(sql, [], (err, logs) => {
         if (err) {
